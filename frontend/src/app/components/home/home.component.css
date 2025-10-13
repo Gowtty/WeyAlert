@@ -1,0 +1,9 @@
+.bg-hero {
+  background-image: linear-gradient(to top,
+      rgba(15, 35, 35, 1) 0%,
+      rgba(15, 35, 35, 0.7) 30%,
+      rgba(15, 35, 35, 0) 100%),
+    url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070');
+  background-size: cover;
+  background-position: center;
+}

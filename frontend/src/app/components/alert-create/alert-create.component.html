@@ -1,0 +1,136 @@
+<div class="flex flex-col min-h-screen bg-background-light dark:bg-background-dark font-display text-white">
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-2xl mx-auto">
+            <h2 class="text-4xl font-bold text-black dark:text-white mb-8">Reportar Alerta</h2>
+            
+            <form [formGroup]="alertForm" (ngSubmit)="onSubmit()" class="space-y-6">
+                
+                <!-- Coordinates Display (Read-Only) AND MINI-MAP -->
+                <div class="p-4 bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner">
+                    <p class="text-sm font-medium text-white/70 mb-3">Ubicación Seleccionada</p>
+                    
+                    <!-- FIX: If coordinates are present, display the coordinates -->
+                    <div *ngIf="selectedLatitude !== null && selectedLongitude !== null; else loadingOrError">
+                        
+                        <!-- Location Icon and Coordinates Display -->
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="material-symbols-outlined text-primary text-3xl mt-1">location_on</span>
+                            <div class="flex-1">
+                                <p class="text-lg font-mono text-primary break-all">
+                                    {{ selectedLatitude | number: '1.6-6' }}, {{ selectedLongitude | number: '1.6-6' }}
+                                </p>
+                                <p class="text-sm text-white/50 mt-1">Coordenadas confirmadas</p>
+                            </div>
+                        </div>
+                        
+                        <button 
+                            type="button" 
+                            (click)="router.navigate(['/map'])" 
+                            class="mt-1 text-sm text-white/70 hover:text-primary transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined !text-base">edit_location</span>
+                            Cambiar Ubicación
+                        </button>
+                    </div>
+                    
+                    <ng-template #loadingOrError>
+                        <!-- FIX: Changed styling to neutral text-white/70 to eliminate the false error report -->
+                        <p class="text-white/70 font-semibold mb-3">Verificando ubicación...</p>
+                        <button 
+                            type="button" 
+                            (click)="router.navigate(['/map'])" 
+                            class="mt-3 text-sm text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 font-semibold">
+                            <span class="material-symbols-outlined !text-base">map</span>
+                            Ir al Mapa para Seleccionar
+                        </button>
+                    </ng-template>
+                    
+                    <!-- Hidden fields to store coords -->
+                    <input type="hidden" formControlName="latitude">
+                    <input type="hidden" formControlName="longitude">
+                </div>
+
+                <!-- Incident Type (Category) -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2" for="incident-type">Tipo de Incidente</label>
+                    <select 
+                        class="form-select w-full bg-background-dark/50 dark:bg-background-light/5 border-none rounded-lg h-14 px-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        id="incident-type" 
+                        formControlName="category"
+                        style="background-color: #0f2323;"> <!-- Added inline style as final fix for white dropdown background -->
+                        <option *ngIf="!categories.length" [ngValue]="null">Cargando categorías...</option>
+                        <option *ngFor="let cat of categories" [ngValue]="cat.id">{{ cat.name }}</option>
+                    </select>
+                    <p *ngIf="alertForm.get('category')?.invalid && alertForm.get('category')?.touched" class="text-red-400 text-sm mt-1">La categoría es requerida.</p>
+                </div>
+
+                <!-- Title (New Field) -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2" for="title">Título</label>
+                    <input 
+                        class="form-input w-full bg-background-dark/50 dark:bg-background-light/5 border-none rounded-lg h-14 px-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        id="title" 
+                        formControlName="title" 
+                        placeholder="Resumen breve del incidente"/>
+                    <p *ngIf="alertForm.get('title')?.invalid && alertForm.get('title')?.touched" class="text-red-400 text-sm mt-1">El título es requerido y debe ser conciso.</p>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2" for="description">Descripción</label>
+                    <textarea 
+                        class="form-textarea w-full bg-background-dark/50 dark:bg-background-light/5 border-none rounded-lg p-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        id="description" 
+                        formControlName="description" 
+                        placeholder="Proporciona detalles sobre el incidente..." 
+                        rows="4"></textarea>
+                    <p *ngIf="alertForm.get('description')?.invalid && alertForm.get('description')?.touched" class="text-red-400 text-sm mt-1">La descripción es requerida.</p>
+                </div>
+                
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2" for="image">Subir Imagen (Opcional)</label>
+                    
+                    <!-- Hidden file input -->
+                    <input 
+                        type="file" 
+                        id="image-input" 
+                        class="hidden" 
+                        accept="image/*"
+                        (change)="onFileSelected($event)">
+                    
+                    <!-- Preview or Upload Area -->
+                    <div *ngIf="!imagePreviewUrl" 
+                         (click)="triggerFileInput()"
+                         class="w-full h-32 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-background-dark/20 text-white/50 cursor-pointer hover:border-primary hover:bg-background-dark/30 transition-all">
+                        <span class="material-symbols-outlined text-4xl">cloud_upload</span>
+                        <p class="ml-3">Arrastra o haz clic para subir una imagen</p>
+                    </div>
+                    
+                    <div *ngIf="imagePreviewUrl" class="relative">
+                        <img [src]="imagePreviewUrl" alt="Preview" class="w-full h-48 object-cover rounded-lg border border-primary/20">
+                        <button 
+                            type="button"
+                            (click)="removeImage()"
+                            class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors">
+                            <span class="material-symbols-outlined text-xl">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button 
+                        type="submit"
+                        [disabled]="alertForm.invalid || isSubmitting"
+                        class="w-full sm:w-auto px-8 py-3 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background-dark focus:ring-primary transition-all duration-300 disabled:opacity-50">
+                        <span *ngIf="!isSubmitting">Enviar Reporte</span>
+                        <span *ngIf="isSubmitting">Enviando...</span>
+                    </button>
+                </div>
+                
+                <div *ngIf="apiMessage" [ngClass]="{'text-green-400': isSuccess, 'text-red-400': !isSuccess}" class="text-sm mt-4 text-center">
+                    {{ apiMessage }}
+                </div>
+            </form>
+        </div>
+    </main>
+</div>

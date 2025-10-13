@@ -1,0 +1,80 @@
+<div class="flex min-h-screen flex-col bg-background-light dark:bg-background-dark">
+  <main class="flex-grow">
+    <section class="relative flex min-h-[75vh] items-end bg-cover bg-center bg-no-repeat bg-hero md:min-h-[85vh]">
+      <div class="container mx-auto flex flex-col items-start justify-end px-6 pb-20 text-left md:pb-32">
+        <div class="max-w-3xl space-y-6">
+          <h1 class="text-4xl font-bold leading-tight text-white md:text-6xl">
+            Comunidad Unida, Rutas Seguras
+          </h1>
+          <p class="text-base text-gray-300 md:text-lg">
+            Observa alertas en tiempo real reportadas por la comunidad. 
+            Únete a la comunidad que mejora nuestros entornos 
+            reportando baches, inundaciones, accidentes y más.
+          </p>
+          <div class="flex flex-wrap gap-4 pt-4">
+            <a routerLink="/map" 
+               class="rounded-lg bg-primary px-8 py-3 text-base font-bold text-background-dark shadow-lg shadow-primary/20 transition-transform hover:scale-105">
+              Ver Mapa
+            </a>
+            @if (!isAuthenticated) {
+              <a routerLink="/register" 
+                 class="rounded-lg border border-primary/50 bg-primary/20 px-8 py-3 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-primary/30">
+                Registrarse
+              </a>
+            } @else {
+              <a routerLink="/alerts/create" 
+                 class="rounded-lg border border-primary/50 bg-primary/20 px-8 py-3 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-primary/30">
+                Crear Alerta
+              </a>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección de características -->
+    <section class="py-20 px-6 bg-white dark:bg-gray-900">
+      <div class="container mx-auto">
+        <h2 class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">
+          ¿Cómo funciona WeyAlert?
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="text-center">
+            <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Localiza</h3>
+            <p class="text-gray-600 dark:text-gray-400">
+              Visualiza en tiempo real las alertas reportadas en tu área
+            </p>
+          </div>
+          <div class="text-center">
+            <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Reporta</h3>
+            <p class="text-gray-600 dark:text-gray-400">
+              Crea alertas con fotos para advertir a otros conductores
+            </p>
+          </div>
+          <div class="text-center">
+            <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Colabora</h3>
+            <p class="text-gray-600 dark:text-gray-400">
+              Únete a la comunidad que mejora la seguridad vial día a día
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
