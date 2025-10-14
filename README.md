@@ -1,22 +1,22 @@
 # 🗺️🔍 WeyAlert: Comunidad Unida, Rutas Seguras
 
-## Descripción del Proyecto
-WeyAlert es una aplicación de mapas social que permite a los usuarios reportar y visualizar alertas en tiempo real sobre las condiciones de la carretera y del entorno en general. A diferencia de las aplicaciones de navegación tradicionales, WeyAlert se centra en la contribución de la comunidad para identificar peligros como baches, inundaciones, accidentes, problemas de alumbrado, etc. Los usuarios pueden crear alertas en su ubicación actual, adjuntar una imagen para contextualizar el reporte y ver las alertas de otros en el mapa.
+## Descripcion del Proyecto
+WeyAlert es una aplicacion de mapas social que permite a los usuarios reportar y visualizar alertas en tiempo real sobre las condiciones de la carretera y del entorno en general. A diferencia de las aplicaciones de navegacion tradicionales, WeyAlert se centra en la contribucion de la comunidad para identificar peligros como baches, inundaciones, accidentes, problemas de alumbrado, etc. Los usuarios pueden crear alertas en su ubicacion actual, adjuntar una imagen para contextualizar el reporte y ver las alertas de otros en el mapa.
 
-Este proyecto fue desarrollado como un Producto Mínimo Viable (MVP) para una entrega académica, demostrando la integración de geolocalización, comunicación en tiempo real y persistencia de datos geoespaciales.
+Este proyecto fue desarrollado como un Producto Minimo Viable (MVP) para una entrega academica, demostrando la integracion de geolocalizacion, comunicación en tiempo real y persistencia de datos geoespaciales.
 
 ## Características del MVP
-- **Mapa Interactivo**: Muestra la ubicación actual del usuario en un mapa interactivo.
+- **Mapa Interactivo**: Muestra la ubicacion actual del usuario en un mapa interactivo.
 - **Creación de Alertas**: Permite a los usuarios crear alertas geolocalizadas con un solo toque.
-- **Subida de Imágenes**: Posibilidad de adjuntar una imagen a cada alerta para un reporte visual.
+- **Subida de Imagenes**: Posibilidad de adjuntar una imagen a cada alerta para un reporte visual.
 - **Visualización de Alertas**: Los iconos de las alertas de otros usuarios aparecen en el mapa en tiempo real.
-- **Sistema de Autenticación**: Módulo básico de registro e inicio de sesión de usuarios.
+- **Sistema de Autenticacion**: Modulo basico de registro e inicio de sesión de usuarios.
 
-## Tecnologías Utilizadas
+## Tecnologias Utilizadas
 
 ### Frontend
-- **Angular**: Framework para la construcción de la interfaz de usuario.
-- **Leaflet/OpenStreetMap**: Integración para la visualización del mapa.
+- **Angular**: Framework para la construccion de la interfaz de usuario.
+- **Leaflet/OpenStreetMap**: Integracion para la visualización del mapa.
 - **Tailwind CSS**: Framework de CSS para el diseño de la interfaz.
 
 ### Backend
@@ -28,11 +28,11 @@ Este proyecto fue desarrollado como un Producto Mínimo Viable (MVP) para una en
 
 ```
 WeyAlert/
-├── backend/              # Código fuente del servidor Django
+├── backend/              # Codigo fuente del servidor Django
 │   ├── alerts/          # App principal de alertas
 │   ├── manage.py
 │   └── ...
-├── frontend/            # Código fuente de la aplicación Angular
+├── frontend/            # Codigo fuente de la aplicacion Angular
 │   ├── src/
 │   ├── angular.json
 │   └── ...
@@ -43,7 +43,7 @@ WeyAlert/
 └── README.md
 ```
 
-## 🚀 Configuración e Instalación
+## 🚀 Configuracion e Instalacion
 
 ### Requisitos Previos
 
@@ -113,7 +113,7 @@ ng serve
 
 El frontend estará corriendo en **http://localhost:4200**
 
-## 📝 Scripts Útiles
+## Scripts Útiles
 
 ### Backend (Django)
 
@@ -150,7 +150,7 @@ ng lint
 ng cache clean
 ```
 
-## ⚙️ Variables de Entorno
+## Variables de Entorno
 
 Copia `.env.example` a `backend/.env` y configura las siguientes variables:
 
@@ -162,62 +162,53 @@ DATABASE_URL=sqlite:///db.sqlite3
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
 ```
 
-**Importante**: Nunca compartas tu archivo `.env` ni lo subas a Git. Ya está incluido en `.gitignore`.
-
-## 🔧 Solución de Problemas
+## Problemas encontrados durante la creacion del proyecto y sus posibles soluciones
 
 ### El backend no inicia
 
-- Verifica que el entorno virtual esté activado (deberías ver `(venv)` en tu terminal)
-- Verifica que todas las dependencias estén instaladas: `pip install -r requirements.txt`
-- Revisa que el archivo `.env` exista en la carpeta `backend/`
-- Verifica que las migraciones estén aplicadas: `python manage.py migrate`
+- Verificar que el entorno virtual este activado (deberias ver `(venv)` en tu terminal)
+- Verificar que todas las dependencias esten instaladas: `pip install -r requirements.txt`
+- Revisar que el archivo `.env` exista en la carpeta `backend/`
+- Verificar que las migraciones esten aplicadas: `python manage.py migrate`
 
 ### El frontend no inicia
 
-- Elimina `node_modules/` y ejecuta `npm install` nuevamente
-- Verifica tu versión de Node.js: `node --version` (debe ser 18+)
-- Limpia la caché de Angular: `ng cache clean`
-- Verifica que Angular CLI esté instalado: `npm install -g @angular/cli`
+- Eliminar `node_modules/` y ejecuta `npm install` nuevamente
+- Verificar tu versión de Node.js: `node --version` (debe ser 18+)
+- Limpiar el cache de Angular: `ng cache clean`
+- Verificar que Angular CLI este instalado: `npm install -g @angular/cli`
 
 ### Error de CORS
 
-- Verifica que `CORS_ALLOWED_ORIGINS` en `backend/.env` incluya `http://localhost:4200`
-- Verifica que `django-cors-headers` esté instalado y configurado correctamente
-- Reinicia el servidor Django después de cambiar variables de entorno
+- Verificar que `CORS_ALLOWED_ORIGINS` en `backend/.env` incluya `http://localhost:4200`
+- Verificar que `django-cors-headers` esté instalado y configurado correctamente
+- Reiniciar el servidor Django después de cambiar variables de entorno
 
 ### Errores de base de datos
 
-- Elimina `db.sqlite3` y ejecuta `python manage.py migrate` nuevamente
-- Verifica que el directorio tenga permisos de escritura
+- Eliminar `db.sqlite3` y ejecuta `python manage.py migrate` nuevamente
+- Verificar que el directorio tenga permisos de escritura
 
-## 📱 Uso de la Aplicación
+## Uso de la Aplicacion
 
 1. **Registro/Login**: Crea una cuenta o inicia sesión
 2. **Ver Mapa**: Explora las alertas existentes en el mapa interactivo
 3. **Crear Alerta**: 
-   - Haz clic en el mapa para seleccionar una ubicación
-   - Completa el formulario con título, descripción y categoría
+   - Haz clic en el mapa para seleccionar una ubicacion
+   - Completa el formulario con titulo, descripcion y categoria
    - Opcionalmente adjunta una imagen
-   - Envía el reporte
+   - Envia el reporte
 4. **Ver Alertas**: Las alertas aparecen como marcadores en el mapa
 
-## 🤝 Contribuir
-
-1. Crea una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
-2. Haz commit de tus cambios: `git commit -m 'Añadir nueva funcionalidad'`
-3. Push a la rama: `git push origin feature/nueva-funcionalidad`
-4. Crea un Pull Request
-
-## 👥 Desarrolladores
+## Desarrolladores
 
 - **Mendoza Bernal Jesús Jean Carlo**
 - **Samano Zavala Oscar Ricardo**
 
 **Grupo**: 4-01 ISV  
-**Institución**: Universidad Autónoma de Sinaloa  
-**Programa**: Licenciatura en Ingeniería de Software
+**Institución**: Universidad Autonoma de Sinaloa  
+**Programa**: Licenciatura en Ingenieria de Software modalidad Virtual
 
-## 📄 Licencia
+## Licencia
 
 Este proyecto fue desarrollado con fines académicos.
