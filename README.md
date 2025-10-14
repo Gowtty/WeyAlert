@@ -1,4 +1,4 @@
-# 🗺️🔍 WeyAlert: Comunidad Unida, Rutas Seguras
+# WeyAlert: Comunidad Unida, Rutas Seguras
 
 ## Descripcion del Proyecto
 WeyAlert es una aplicacion de mapas social que permite a los usuarios reportar y visualizar alertas en tiempo real sobre las condiciones de la carretera y del entorno en general. A diferencia de las aplicaciones de navegacion tradicionales, WeyAlert se centra en la contribucion de la comunidad para identificar peligros como baches, inundaciones, accidentes, problemas de alumbrado, etc. Los usuarios pueden crear alertas en su ubicacion actual, adjuntar una imagen para contextualizar el reporte y ver las alertas de otros en el mapa.
@@ -43,7 +43,7 @@ WeyAlert/
 └── README.md
 ```
 
-## 🚀 Configuracion e Instalacion
+## Configuracion e Instalacion
 
 ### Requisitos Previos
 
