@@ -77,13 +77,13 @@ source venv/bin/activate
 #### Instalar Dependencias
 
 ```bash
-cd backend
 pip install -r requirements.txt
 ```
 
 #### Ejecutar Migraciones y Crear Superusuario
 
 ```bash
+cd backend
 
 # Aplicar migraciones
 python manage.py migrate
