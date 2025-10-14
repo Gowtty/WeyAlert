@@ -77,13 +77,13 @@ source venv/bin/activate
 #### Instalar Dependencias
 
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
 #### Ejecutar Migraciones y Crear Superusuario
 
 ```bash
-cd backend
 
 # Aplicar migraciones
 python manage.py migrate
@@ -95,7 +95,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-El backend estará corriendo en **http://localhost:8000**
+El backend estara corriendo en **http://localhost:8000**
 
 ### 3. Configurar Frontend (Angular)
 
@@ -111,9 +111,9 @@ npm install
 ng serve
 ```
 
-El frontend estará corriendo en **http://localhost:4200**
+El frontend estara corriendo en **http://localhost:4200**
 
-## Scripts Útiles
+## Listado de Scripts
 
 ### Backend (Django)
 
@@ -130,14 +130,14 @@ python manage.py createsuperuser
 # Acceder al shell de Django
 python manage.py shell
 
-# Colectar archivos estáticos (para producción)
+# Colectar archivos estaticos (para produccion)
 python manage.py collectstatic
 ```
 
 ### Frontend (Angular)
 
 ```bash
-# Compilar para producción
+# Compilar para produccion
 ng build --configuration production
 
 # Ejecutar tests
@@ -146,7 +146,7 @@ ng test
 # Ejecutar linter
 ng lint
 
-# Limpiar caché
+# Limpiar cache
 ng cache clean
 ```
 
