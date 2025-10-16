@@ -1,80 +1,115 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { API_BASE_URL } from '../config'; // Import the correct base URL constant
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { Router } from '@angular/router';
+import { API_BASE_URL } from '../config';
 
 export interface User {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
 }
 
-export interface AuthResponse {
-  user: User;
-  token: string;
+interface LoginResponse {
+  user: User;
+  token: string;
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root'
 })
 export class AuthService {
-  // CORRECTED BASE URL: Set to the imported constant, which should resolve to 'http://localhost:8000/api'
-  private apiUrl = API_BASE_URL; 
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
+  private apiUrl = API_BASE_URL;
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {
-    this.loadStoredUser();
-  }
+  constructor(
+    private http: HttpClient,
+    private router: Router
+  ) {
+    // Cargar usuario desde localStorage al inicializar
+    const token = localStorage.getItem('auth_token');
+    const userStr = localStorage.getItem('current_user');
+    if (token && userStr) {
+      this.currentUserSubject.next(JSON.parse(userStr));
+    }
+  }
 
-  private loadStoredUser() {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      this.currentUserSubject.next(JSON.parse(storedUser));
-    }
-  }
+  login(username: string, password: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login/`, {
+      username,
+      password
+    }).pipe(
+      tap(response => {
+        this.setToken(response.token);
+        this.setCurrentUser(response.user);
+      })
+    );
+  }
 
-  register(userData: any): Observable<AuthResponse> {
-    // Correct Endpoint: http://localhost:8000/api/register/
-    return this.http.post<AuthResponse>(`${this.apiUrl}/register/`, userData)
-      .pipe(tap(response => this.handleAuthResponse(response)));
-  }
+register(userData: any): Observable<LoginResponse> {
+  return this.http.post<LoginResponse>(`${this.apiUrl}/auth/register/`, userData).pipe(
+    tap(response => {
+      this.setToken(response.token);
+      this.setCurrentUser(response.user);
+    })
+  );
+}
+logout(): void {
+  const token = this.getToken();
+  
+  // Limpiar datos locales primero para evitar problemas de UI
+  this.clearAuthData();
+  this.currentUserSubject.next(null);
+  
+  if (token) {
+    // Intentar logout en el backend (pero no bloquear si falla)
+    this.http.post(`${this.apiUrl}/auth/logout/`, {}, {
+      headers: this.getAuthHeaders()
+    }).subscribe({
+      next: () => console.log('Logout exitoso en backend'),
+      error: (err) => console.error('Error en logout del backend:', err)
+    });
+  }
+  
+  // Redirigir al login independientemente del resultado del backend
+  this.router.navigate(['/login']);
+}
 
-  login(credentials: { username: string; password: string }): Observable<AuthResponse> {
-    // Correct Endpoint: http://localhost:8000/api/login/
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login/`, credentials)
-      .pipe(tap(response => this.handleAuthResponse(response)));
-  }
+getAuthHeaders(): HttpHeaders {
+  const token = this.getToken();
+  console.log('Token enviado en headers:', token); // Debug
+  return new HttpHeaders({
+    'Authorization': `Token ${token}`,
+    'Content-Type': 'application/json'
+  });
+}
 
-  logout(): Observable<any> {
-    // Correct Endpoint: http://localhost:8000/api/logout/
-    // Note: Your Django backend requires the Authorization header for this endpoint (handled by interceptor)
-    return this.http.post(`${this.apiUrl}/logout/`, {})
-      .pipe(tap(() => {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        this.currentUserSubject.next(null);
-      }));
-  }
+  private setToken(token: string): void {
+    localStorage.setItem('auth_token', token);
+  }
 
-  private handleAuthResponse(response: AuthResponse) {
-    localStorage.setItem('authToken', response.token);
-    localStorage.setItem('currentUser', JSON.stringify(response.user));
-    this.currentUserSubject.next(response.user);
-  }
+  getToken(): string | null {
+    return localStorage.getItem('auth_token');
+  }
 
-  getToken(): string | null {
-    return localStorage.getItem('authToken');
-  }
+  private setCurrentUser(user: User): void {
+    localStorage.setItem('current_user', JSON.stringify(user));
+    this.currentUserSubject.next(user);
+  }
 
-  isAuthenticated(): boolean {
-    return !!this.getToken();
-  }
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
+  }
 
-  getCurrentUser(): User | null {
-    return this.currentUserSubject.value;
-  }
+  private clearAuthData(): void {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('current_user');
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getToken() && !!this.getCurrentUser();
+  }
 }

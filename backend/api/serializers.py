@@ -24,7 +24,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
-        UserProfile.objects.create(user=user)
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -32,7 +31,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ['user', 'phone', 'avatar', 'alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
+        read_only_fields = ['alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
 
 class AlertCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -51,4 +51,4 @@ class AlertSerializer(serializers.ModelSerializer):
 class AlertCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alert
-        fields = ['category', 'title', 'description', 'latitude', 'longitude', 'address', 'image']
+        fields = ['category', 'title', 'description', 'latitude', 'longitude']

@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
@@ -25,7 +25,16 @@ class AlertViewSet(viewsets.ModelViewSet):
         return AlertSerializer
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        alert = serializer.save(user=self.request.user)
+        # Actualizar estadísticas del usuario
+        if hasattr(self.request.user, 'profile'):
+            self.request.user.profile.update_statistics()
+    
+    def perform_destroy(self, instance):
+        # Actualizar estadísticas antes de eliminar
+        user_profile = instance.user.profile
+        super().perform_destroy(instance)
+        user_profile.update_statistics()
     
     @action(detail=False, methods=['get'])
     def nearby(self, request):
@@ -55,52 +64,104 @@ class AlertViewSet(viewsets.ModelViewSet):
         alerts = Alert.objects.filter(user=request.user)
         serializer = AlertSerializer(alerts, many=True)
         return Response(serializer.data)
-    
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
     
-    @action(detail=False, methods=['get'])
+    def get_queryset(self):
+        # Usuarios solo pueden ver su propio perfil
+        return UserProfile.objects.filter(user=self.request.user)
+    
+    @action(detail=False, methods=['get', 'patch'])
     def me(self, request):
-        profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(profile)
-        return Response(serializer.data)
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+        except UserProfile.DoesNotExist:
+            # Crear perfil si no existe
+            profile = UserProfile.objects.create(user=request.user)
+        
+        if request.method == 'GET':
+            serializer = UserProfileSerializer(profile)
+            return Response(serializer.data)
+        
+        elif request.method == 'PATCH':
+            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                
+                # Actualizar también el usuario si se envían datos
+                user_data = {}
+                if 'email' in request.data:
+                    user_data['email'] = request.data['email']
+                if 'first_name' in request.data:
+                    user_data['first_name'] = request.data['first_name']
+                if 'last_name' in request.data:
+                    user_data['last_name'] = request.data['last_name']
+                
+                if user_data:
+                    User.objects.filter(pk=request.user.pk).update(**user_data)
+                    # Actualizar el objeto user en la solicitud
+                    request.user.refresh_from_db()
+                
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        
+        if not user.check_password(current_password):
+            return Response(
+                {"error": "Contraseña actual incorrecta"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({"message": "Contraseña cambiada correctamente"})
 
 class UserRegisterView(APIView):
-    permission_classes = [permissions.AllowAny] # Anyone can register
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def post(self, request):
+        print("Datos recibidos:", request.data)  # Debug
+        print("Headers:", request.headers)  # Debug
+        
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Generate and return token immediately on registration
             token, created = Token.objects.get_or_create(user=user) 
             return Response({
                 'user': UserSerializer(user).data,
                 'token': token.key
             }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print("Errores del serializer:", serializer.errors)  # Debug
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserLoginView(APIView):
-    permission_classes = [permissions.AllowAny] # Allow anonymous access for login
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Añade esta línea
 
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
         
-        # Use Django's authenticate to verify credentials
         user = authenticate(username=username, password=password)
         
         if user:
-            # Get or create token for the user
             token, created = Token.objects.get_or_create(user=user) 
             return Response({
                 'user': UserSerializer(user).data,
                 'token': token.key
             })
         
-        # Return generic error for invalid credentials
         return Response(
             {"error": "Credenciales inválidas"},
             status=status.HTTP_401_UNAUTHORIZED
@@ -110,18 +171,59 @@ class UserLogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def post(self, request):
-        # Simply delete the user's token, forcing the frontend to re-authenticate
-        # This is the correct way to "log out" in a token-based API
         request.user.auth_token.delete() 
         return Response({"message": "Sesión cerrada exitosamente"}, status=status.HTTP_200_OK)
 
-class UserProfileViewSet(viewsets.ModelViewSet):
-    queryset = UserProfile.objects.all()
-    serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    @action(detail=False, methods=['get'])
-    def me(self, request):
+# Vistas function-based para compatibilidad
+@api_view(['GET', 'PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def user_profile(request):
+    """Vista function-based para el perfil de usuario"""
+    try:
         profile = UserProfile.objects.get(user=request.user)
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=request.user)
+    
+    if request.method == 'GET':
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
+    
+    elif request.method == 'PATCH':
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            
+            # Actualizar datos del usuario
+            user_data = {}
+            if 'email' in request.data:
+                user_data['email'] = request.data['email']
+            if 'first_name' in request.data:
+                user_data['first_name'] = request.data['first_name']
+            if 'last_name' in request.data:
+                user_data['last_name'] = request.data['last_name']
+            
+            if user_data:
+                User.objects.filter(pk=request.user.pk).update(**user_data)
+                request.user.refresh_from_db()
+            
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def change_password(request):
+    """Vista function-based para cambiar contraseña"""
+    user = request.user
+    current_password = request.data.get('current_password')
+    new_password = request.data.get('new_password')
+    
+    if not user.check_password(current_password):
+        return Response(
+            {"error": "Contraseña actual incorrecta"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user.set_password(new_password)
+    user.save()
+    
+    return Response({"message": "Contraseña cambiada correctamente"})

@@ -1,0 +1,118 @@
+<div class="flex flex-col min-h-screen bg-background-light dark:bg-background-dark font-display text-white">
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-2xl mx-auto">
+            <h2 class="text-4xl font-bold text-black dark:text-white mb-8">Editar Alerta</h2>
+            
+            <form [formGroup]="alertForm" (ngSubmit)="onSubmit()" class="space-y-6">
+                
+                <!-- Alert Location (Read-Only) -->
+                <div class="p-4 bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner">
+                    <p class="text-sm font-medium text-white/70 mb-3">Ubicación de la Alerta</p>
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-primary text-3xl mt-1">location_on</span>
+                        <div class="flex-1">
+                            <p class="text-lg font-mono text-primary break-all" *ngIf="currentAlert">
+                                {{ currentAlert.latitude | number: '1.6-6' }}, {{ currentAlert.longitude | number: '1.6-6' }}
+                            </p>
+                            <p class="text-sm text-white/50 mt-1">Ubicación fija (no editable)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Incident Type -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2">Tipo de Incidente</label>
+                    <select 
+                        class="form-select w-full bg-background-dark/50 border-none rounded-lg h-14 px-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        formControlName="category">
+                        <option *ngFor="let cat of categories" [ngValue]="cat.id">{{ cat.name }}</option>
+                    </select>
+                </div>
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2">Título</label>
+                    <input 
+                        class="form-input w-full bg-background-dark/50 border-none rounded-lg h-14 px-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        formControlName="title" 
+                        placeholder="Resumen breve del incidente"/>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2">Descripción</label>
+                    <textarea 
+                        class="form-textarea w-full bg-background-dark/50 border-none rounded-lg p-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        formControlName="description" 
+                        placeholder="Proporciona detalles sobre el incidente..." 
+                        rows="4"></textarea>
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2">Estado</label>
+                    <select 
+                        class="form-select w-full bg-background-dark/50 border-none rounded-lg h-14 px-4 text-white focus:ring-2 focus:ring-primary shadow-md" 
+                        formControlName="status">
+                        <option value="active">Activa</option>
+                        <option value="resolved">Resuelta</option>
+                        <option value="expired">Expirada</option>
+                    </select>
+                </div>
+
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-black/70 dark:text-white/70 mb-2">Imagen Actual</label>
+                    
+                    <input 
+                        type="file" 
+                        id="image-input" 
+                        class="hidden" 
+                        accept="image/*"
+                        (change)="onFileSelected($event)">
+                    
+                    <div *ngIf="!imagePreviewUrl && currentAlert?.image" class="mb-4">
+                        <img [src]="imagePreviewUrl" alt="Current alert image" class="w-full h-48 object-cover rounded-lg border border-primary/20">
+                    </div>
+                    
+                    <div *ngIf="!imagePreviewUrl && !currentAlert?.image" 
+                         (click)="triggerFileInput()"
+                         class="w-full h-32 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-background-dark/20 text-white/50 cursor-pointer hover:border-primary hover:bg-background-dark/30 transition-all">
+                        <span class="material-symbols-outlined text-4xl">cloud_upload</span>
+                        <p class="ml-3">Haz clic para cambiar la imagen</p>
+                    </div>
+                    
+                    <div *ngIf="imagePreviewUrl" class="relative">
+                        <img [src]="imagePreviewUrl" alt="Preview" class="w-full h-48 object-cover rounded-lg border border-primary/20">
+                        <button 
+                            type="button"
+                            (click)="removeImage()"
+                            class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors">
+                            <span class="material-symbols-outlined text-xl">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button 
+                        type="button"
+                        (click)="router.navigate(['/alerts'])" 
+                        class="flex-1 px-8 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-all duration-300">
+                        Cancelar
+                    </button>
+                    <button 
+                        type="submit"
+                        [disabled]="alertForm.invalid || isSubmitting"
+                        class="flex-1 px-8 py-3 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background-dark focus:ring-primary transition-all duration-300 disabled:opacity-50">
+                        <span *ngIf="!isSubmitting">Actualizar Alerta</span>
+                        <span *ngIf="isSubmitting">Actualizando...</span>
+                    </button>
+                </div>
+                
+                <div *ngIf="apiMessage" [ngClass]="{'text-green-400': isSuccess, 'text-red-400': !isSuccess}" class="text-sm mt-4 text-center">
+                    {{ apiMessage }}
+                </div>
+            </form>
+        </div>
+    </main>
+</div>

@@ -1,22 +1,18 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule, NgIf, DecimalPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../services/auth.service';
+import { AlertService, AlertCategory } from '../../services/alert.service';
 import { API_BASE_URL } from '../../config';
-
-interface AlertCategory {
-  id: number;
-  name: string;
-}
 
 @Component({
   selector: 'app-alert-create',
   standalone: true,
-  imports: [CommonModule, NgIf, DecimalPipe, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './alert-create.component.html',
   styleUrl: './alert-create.component.css'
 })
@@ -40,36 +36,40 @@ export class AlertCreateComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     public router: Router,
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private alertService: AlertService
   ) {
     this.alertForm = this.fb.group({
-      category: [null, Validators.required],
+      category: ['', Validators.required], // Cambiado de null a ''
       title: ['', [Validators.required, Validators.maxLength(200)]],
       description: ['', Validators.required],
       latitude: [{ value: null, disabled: true }, Validators.required],
-      longitude: [{ value: null, disabled: true }, Validators.required],
+      longitude: [{ value: null, disabled: true }, Validators.required]
+      // Removido el campo 'icon' que no existe en el backend
     });
   }
 
   ngOnInit(): void {
-    // 1. Fetch Categories for the dropdown
-    this.fetchCategories();
-
-    // 2. Retrieve coordinates from the URL (passed from MapComponent)
+    this.loadCategories();
     this.routeSubscription = this.route.queryParams.subscribe(params => {
-        const lat = params['lat'];
-        const lng = params['lng'];
-        
-        if (lat && lng) {
-            this.selectedLatitude = parseFloat(lat);
-            this.selectedLongitude = parseFloat(lng);
-            this.alertForm.controls['latitude'].setValue(this.selectedLatitude);
-            this.alertForm.controls['longitude'].setValue(this.selectedLongitude);
-            this.apiMessage = null; 
-        } else {
-            console.warn("Coordinates missing in URL. Redirecting to map for selection.");
-            this.router.navigate(['/map'], { replaceUrl: true, queryParams: { error: 'select_location' } });
-        }
+      const lat = params['lat'];
+      const lng = params['lng'];
+      
+      if (lat && lng) {
+        this.selectedLatitude = parseFloat(lat);
+        this.selectedLongitude = parseFloat(lng);
+        this.alertForm.patchValue({
+          latitude: this.selectedLatitude,
+          longitude: this.selectedLongitude
+        });
+        this.apiMessage = null; 
+      } else {
+        console.warn("Coordinates missing in URL.");
+        this.router.navigate(['/map'], { 
+          replaceUrl: true, 
+          queryParams: { error: 'select_location' } 
+        });
+      }
     });
   }
   
@@ -82,9 +82,6 @@ export class AlertCreateComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Handles file selection for image upload
-   */
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
@@ -131,27 +128,6 @@ export class AlertCreateComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Fetches the list of alert categories from the backend API.
-   */
-  private fetchCategories(): void {
-    const url = `${this.apiUrl}/categories/`;
-    
-    this.http.get<AlertCategory[]>(url)
-      .subscribe({
-        next: (data) => {
-          this.categories = data;
-          if (data.length > 0) {
-            this.alertForm.get('category')?.setValue(data[0].id);
-          }
-        },
-        error: (err: HttpErrorResponse) => {
-          this.apiMessage = `Error al cargar categorías. (Estado: ${err.status})`;
-          this.isSuccess = false;
-        }
-      });
-  }
-
   onSubmit(): void {
     this.markAllControlsAsDirty(this.alertForm);
 
@@ -175,7 +151,8 @@ export class AlertCreateComponent implements OnInit, OnDestroy {
       formData.append('longitude', rawData.longitude.toString());
       formData.append('image', this.selectedImage);
 
-      this.http.post(`${this.apiUrl}/alerts/`, formData).subscribe({
+      // Usar AlertService en lugar de HttpClient directo
+      this.alertService.createAlert(formData as any).subscribe({
         next: () => {
           this.isSuccess = true;
           this.apiMessage = 'Alerta reportada exitosamente!';
@@ -204,7 +181,8 @@ export class AlertCreateComponent implements OnInit, OnDestroy {
         longitude: rawData.longitude,
       };
 
-      this.http.post(`${this.apiUrl}/alerts/`, payload).subscribe({
+      // Usar AlertService en lugar de HttpClient directo
+      this.alertService.createAlert(payload).subscribe({
         next: () => {
           this.isSuccess = true;
           this.apiMessage = 'Alerta reportada exitosamente!';
@@ -235,4 +213,35 @@ export class AlertCreateComponent implements OnInit, OnDestroy {
       }
     });
   }
+
+  // Reemplazar fetchCategories por loadCategories usando AlertService
+private loadCategories(): void {
+  console.log('Token en localStorage:', localStorage.getItem('auth_token'));
+  console.log('Usuario autenticado:', this.authService.isAuthenticated());
+  
+  this.alertService.getAlertCategories().subscribe({
+    next: (categories) => {
+      console.log('Categorías cargadas exitosamente:', categories);
+      this.categories = categories;
+    },
+    error: (error: HttpErrorResponse) => {
+      console.error('Error completo:', error);
+      console.log('Headers enviados:', error.headers);
+      this.apiMessage = `Error al cargar categorías. (Estado: ${error.status})`;
+      this.isSuccess = false;
+      
+      // Si es error 401, redirigir al login
+      if (error.status === 401) {
+        this.authService.logout();
+      }
+    }
+  });
+}
+
+  getSelectedCategory(): AlertCategory | undefined {
+    const categoryId = this.alertForm.get('category')?.value;
+    return this.categories.find(cat => cat.id === categoryId);
+  }
+
+  
 }

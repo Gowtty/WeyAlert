@@ -1,0 +1,248 @@
+<div class="flex flex-col min-h-screen bg-background-light dark:bg-background-dark font-display text-white">
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-4xl font-bold text-black dark:text-white mb-8">Mi Perfil</h2>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoading" class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p class="text-white/70 mt-4">Cargando perfil...</p>
+        </div>
+
+        <div *ngIf="!isLoading && userProfile" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Columna izquierda: Información de perfil y privacidad -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Tarjeta de Información de Perfil -->
+                <div class="bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-semibold text-white">Información de Perfil</h3>
+                        <button> 
+                            (click)="isEditing = !isEditing"
+                            class="px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+                            [class.bg-gray-600]="isEditing"
+                            [class.hover:bg-gray-700]="isEditing"
+                            [class.bg-primary]="!isEditing"
+                            [class.hover:bg-primary/90]="!isEditing"
+                            [class.text-background-dark]="!isEditing">
+                            <span class="material-symbols-outlined text-lg">
+                                {{ isEditing ? 'close' : 'edit' }}
+                            </span>
+                            {{ isEditing ? 'Cancelar' : 'Editar' }}
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center space-x-6 mb-6">
+                        <div class="relative">
+                            <img 
+                                [src]="imagePreviewUrl || 'assets/default-avatar.png'" 
+                                alt="Avatar" 
+                                class="w-24 h-24 rounded-full object-cover border-2 border-primary">
+                            <button 
+                                *ngIf="isEditing"
+                                (click)="triggerFileInput()" 
+                                class="absolute bottom-0 right-0 bg-primary text-background-dark rounded-full p-2 shadow-lg hover:bg-primary/90 transition-colors">
+                                <span class="material-symbols-outlined text-lg">edit</span>
+                            </button>
+                            <input 
+                                type="file" 
+                                id="avatar-input" 
+                                class="hidden" 
+                                accept="image/*" 
+                                (change)="onFileSelected($event)">
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold text-white">
+                                {{ userProfile.user.first_name }} {{ userProfile.user.last_name }}
+                            </h4>
+                            <p class="text-white/70">{{ userProfile.user.username }}</p>
+                            <p class="text-white/70">Miembro desde: {{ formatDate(userProfile.created_at) }}</p>
+                        </div>
+                    </div>
+
+                    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-white/70 mb-2">Correo Electrónico</label>
+                                <input 
+                                    type="email" 
+                                    formControlName="email" 
+                                    [readonly]="!isEditing"
+                                    [class]="isEditing ? 
+                                        'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
+                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-white/70 mb-2">Teléfono</label>
+                                <input 
+                                    type="tel" 
+                                    formControlName="phone" 
+                                    [readonly]="!isEditing"
+                                    [class]="isEditing ? 
+                                        'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
+                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-white/70 mb-2">Nombre</label>
+                                <input 
+                                    type="text" 
+                                    formControlName="first_name" 
+                                    [readonly]="!isEditing"
+                                    [class]="isEditing ? 
+                                        'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
+                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-white/70 mb-2">Apellido</label>
+                                <input 
+                                    type="text" 
+                                    formControlName="last_name" 
+                                    [readonly]="!isEditing"
+                                    [class]="isEditing ? 
+                                        'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
+                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
+                            </div>
+                        </div>
+
+                        <div *ngIf="isEditing" class="flex gap-4 pt-4">
+                            <button 
+                                type="button"
+                                (click)="isEditing = false" 
+                                class="flex-1 px-8 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-all duration-300">
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit"
+                                [disabled]="isSubmitting"
+                                class="flex-1 px-8 py-3 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 transition-all duration-300 disabled:opacity-50">
+                                <span *ngIf="!isSubmitting">Guardar Cambios</span>
+                                <span *ngIf="isSubmitting">Guardando...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tarjeta de Estadísticas -->
+                <div class="bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner p-6">
+                    <h3 class="text-2xl font-semibold text-white mb-6">Mis Estadísticas</h3>
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="p-4 bg-background-dark/30 rounded-lg">
+                            <p class="text-3xl font-bold text-primary">{{ userProfile.alerts_reported }}</p>
+                            <p class="text-white/70 text-sm">Alertas Reportadas</p>
+                        </div>
+                        <div class="p-4 bg-background-dark/30 rounded-lg">
+                            <p class="text-3xl font-bold text-green-400">{{ userProfile.alerts_resolved }}</p>
+                            <p class="text-white/70 text-sm">Alertas Resueltas</p>
+                        </div>
+                        <div class="p-4 bg-background-dark/30 rounded-lg">
+                            <p class="text-3xl font-bold text-yellow-400">{{ userProfile.reputation_points }}</p>
+                            <p class="text-white/70 text-sm">Puntos de Reputación</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta de Privacidad -->
+                <div class="bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner p-6">
+                    <h3 class="text-2xl font-semibold text-white mb-6">Privacidad</h3>
+                    <form [formGroup]="privacyForm" (change)="updatePrivacySettings()" class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-white font-medium">Acceso a Ubicación</h4>
+                                <p class="text-white/70 text-sm">Permitir que WeyAlert acceda a tu ubicación</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" formControlName="location_access" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-white font-medium">Compartir Ubicación</h4>
+                                <p class="text-white/70 text-sm">Compartir tu ubicación con otros usuarios</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" formControlName="share_location" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tarjeta de Cambio de Contraseña -->
+                <div class="bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner p-6">
+                    <h3 class="text-2xl font-semibold text-white mb-6">Cambiar Contraseña</h3>
+                    <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-white/70 mb-2">Contraseña Actual</label>
+                            <input 
+                                type="password" 
+                                formControlName="current_password" 
+                                class="w-full bg-background-dark/50 border border-gray-700 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-white/70 mb-2">Nueva Contraseña</label>
+                            <input 
+                                type="password" 
+                                formControlName="new_password" 
+                                class="w-full bg-background-dark/50 border border-gray-700 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-white/70 mb-2">Confirmar Nueva Contraseña</label>
+                            <input 
+                                type="password" 
+                                formControlName="confirm_password" 
+                                class="w-full bg-background-dark/50 border border-gray-700 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div class="flex justify-end pt-4">
+                            <button 
+                                type="submit" 
+                                [disabled]="isPasswordSubmitting" 
+                                class="px-6 py-3 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 transition-all duration-300 disabled:opacity-50">
+                                <span *ngIf="!isPasswordSubmitting">Cambiar Contraseña</span>
+                                <span *ngIf="isPasswordSubmitting">Cambiando...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Columna derecha: Historial de Reportes -->
+            <div class="lg:col-span-1">
+                <div class="bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner p-6">
+                    <h3 class="text-2xl font-semibold text-white mb-6">Historial de Reportes</h3>
+                    <div class="space-y-4 max-h-[600px] overflow-y-auto">
+                        <div 
+                            *ngFor="let alert of userAlerts" 
+                            class="p-4 bg-background-dark/30 rounded-lg border border-primary/20 hover:border-primary/50 transition-colors cursor-pointer"
+                            (click)="router.navigate(['/alerts'])">
+                            <h4 class="font-semibold text-white text-sm mb-2">{{ alert.title }}</h4>
+                            <p class="text-white/70 text-xs mb-2 line-clamp-2">{{ alert.description }}</p>
+                            <div class="flex justify-between items-center text-xs">
+                                <span [class]="'px-2 py-1 rounded-full ' + getStatusBadgeClass(alert.status)">
+                                    {{ alert.status || 'active' }}
+                                </span>
+                                <span class="text-white/50">{{ formatDate(alert.created_at || '') }}</span>
+                            </div>
+                        </div>
+                        <div *ngIf="userAlerts.length === 0" class="text-center py-8">
+                            <span class="material-symbols-outlined text-4xl text-white/30 mb-2">warning</span>
+                            <p class="text-white/70">No hay reportes aún</p>
+                            <button 
+                                (click)="router.navigate(['/alert-create'])" 
+                                class="mt-4 px-4 py-2 bg-primary text-background-dark text-sm rounded-lg hover:bg-primary/90 transition-all">
+                                Crear Primera Alerta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mensaje de estado -->
+        <div 
+            *ngIf="message" 
+            class="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transition-all duration-300"
+            [class.bg-green-500]="isSuccess"
+            [class.bg-red-500]="!isSuccess">
+            {{ message }}
+        </div>
+    </main>
+</div>

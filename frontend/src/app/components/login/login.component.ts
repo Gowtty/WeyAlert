@@ -1,182 +1,151 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router'; 
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidatorFn } from '@angular/forms';
-import { Subscription } from 'rxjs';
-import { debounceTime } from 'rxjs/operators'; 
-
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl } from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-
-export function passwordMatchValidator(controlName: string, checkControlName: string): ValidatorFn {
-    return (formGroup: AbstractControl): { [key: string]: any } | null => {
-        const group = formGroup as FormGroup; 
-        const control = group.get(controlName);
-        const checkControl = group.get(checkControlName);
-        
-        const controlValue = control?.value;
-        const checkControlValue = checkControl?.value;
-        
-        
-        if (controlValue && checkControlValue && controlValue !== checkControlValue) {
-             return { 'mismatch': true };
-        }
-        
-        return null;
-    };
-}
 
 @Component({
   selector: 'app-login',
-  imports: [
-    ReactiveFormsModule, 
-    CommonModule
-  ],
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
-export class LoginComponent implements OnInit, OnDestroy { 
-  isLoginMode: boolean = true;
+export class LoginComponent implements OnInit {
   loginForm: FormGroup;
   registerForm: FormGroup;
-  
-  private queryParamsSubscription: Subscription | undefined;
-  private validatorSubscription: Subscription | undefined; 
-  public authError: string | null = null; 
+  isSubmitting = false;
+  authError: string | null = null;
+  isLoginMode = true;
 
   constructor(
-    private route: ActivatedRoute, 
+    private fb: FormBuilder,
+    private authService: AuthService,
     private router: Router,
-    private fb: FormBuilder, 
-    private authService: AuthService
+    private route: ActivatedRoute
   ) {
-
+    // Formulario de Login
     this.loginForm = this.fb.group({
-      username: ['', Validators.required],
-      password: ['', Validators.required]
+      username: ['', [Validators.required]],
+      password: ['', [Validators.required, Validators.minLength(8)]]
     });
 
+    // Formulario de Registro
     this.registerForm = this.fb.group({
-      username: ['', Validators.required],
+      username: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.minLength(8)]], 
-      password_confirm: ['']
-    }, { validators: passwordMatchValidator('password', 'password_confirm') });
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      password_confirm: ['', [Validators.required]]
+    }, { validators: this.passwordMatchValidator });
   }
 
   ngOnInit(): void {
-    this.queryParamsSubscription = this.route.queryParams.subscribe(params => {
-      const mode = params['mode'];
-      this.isLoginMode = (mode !== 'register');
-      this.authError = null; 
-    });
-
-    const passwordControl = this.registerForm.get('password');
-    const passwordConfirmControl = this.registerForm.get('password_confirm');
-
-    if (passwordControl && passwordConfirmControl) {
-      this.validatorSubscription = passwordControl.valueChanges
-        .pipe(debounceTime(100))
-        .subscribe(() => {
-          this.registerForm.updateValueAndValidity({ emitEvent: false });
-        });
-        
-      this.validatorSubscription.add(passwordConfirmControl.valueChanges
-        .pipe(debounceTime(100))
-        .subscribe(() => {
-          this.registerForm.updateValueAndValidity({ emitEvent: false });
-        }));
-    }
-  }
-
-  ngOnDestroy(): void {
-    if (this.queryParamsSubscription) {
-        this.queryParamsSubscription.unsubscribe();
-    }
-    if (this.validatorSubscription) {
-        this.validatorSubscription.unsubscribe();
-    }
-  }
-  
-  private markFormGroupTouched(formGroup: FormGroup) {
-    Object.values(formGroup.controls).forEach(control => {
-      control.markAsTouched();
-      control.markAsDirty(); 
-      control.updateValueAndValidity();
-
-      if (control instanceof FormGroup) {
-        this.markFormGroupTouched(control);
-      }
+    // Verificar si estamos en modo registro desde query params
+    this.route.queryParams.subscribe(params => {
+      this.isLoginMode = params['mode'] !== 'register';
     });
   }
 
-  // --- View Switching & URL Sync ---
+  private passwordMatchValidator(control: AbstractControl) {
+    const password = control.get('password');
+    const password_confirm = control.get('password_confirm');
+    
+    if (!password || !password_confirm) return null;
+    
+    return password.value === password_confirm.value ? null : { mismatch: true };
+  }
 
   showLogin(): void {
-    this.registerForm.reset(); 
-    this.router.navigate([], { relativeTo: this.route, queryParams: { mode: null }, queryParamsHandling: 'merge' });
+    this.isLoginMode = true;
+    this.authError = null;
+    this.loginForm.reset();
+    this.updateQueryParams();
   }
 
   showRegister(): void {
-    this.loginForm.reset(); 
-    this.router.navigate([], { relativeTo: this.route, queryParams: { mode: 'register' }, queryParamsHandling: 'merge' });
+    this.isLoginMode = false;
+    this.authError = null;
+    this.registerForm.reset();
+    this.updateQueryParams();
   }
 
-  // --- Form Submission Logic ---
+  private updateQueryParams(): void {
+    const queryParams = this.isLoginMode ? {} : { mode: 'register' };
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queryParams,
+      queryParamsHandling: 'merge'
+    });
+  }
 
   onLoginSubmit(): void {
-    this.authError = null;
-    if (this.loginForm.invalid) {
-      this.markFormGroupTouched(this.loginForm); 
-      return;
+    if (this.loginForm.valid) {
+      this.isSubmitting = true;
+      this.authError = null;
+      const formData = this.loginForm.value;
+
+      this.authService.login(formData.username, formData.password).subscribe({
+        next: (response) => {
+          this.isSubmitting = false;
+          this.router.navigate(['/map']);
+        },
+        error: (error: any) => {
+          this.isSubmitting = false;
+          this.authError = error.error?.message || 'Error durante el inicio de sesión';
+        }
+      });
+    } else {
+      this.markFormGroupTouched(this.loginForm);
     }
-
-    const credentials = this.loginForm.getRawValue();
-
-    this.authService.login(credentials).subscribe({
-      next: () => {
-        this.router.navigate(['/map']); 
-      },
-      error: (err) => {
-        this.authError = err.error?.error || err.error?.non_field_errors?.[0] || 'Login failed. Please try again.';
-      }
-    });
   }
 
   onRegisterSubmit(): void {
+  if (this.registerForm.valid) {
+    this.isSubmitting = true;
     this.authError = null;
-    
-    this.markFormGroupTouched(this.registerForm); 
-    
-    if (this.registerForm.invalid) {
-        if (this.registerForm.errors?.['mismatch']) {
-             this.authError = 'Passwords do not match.';
-        } else {
-             this.authError = 'Please check all fields (username, email, password length).';
-        }
-        return;
+    const formData = this.registerForm.value;
+
+    // Verificar que las contraseñas coincidan
+    if (formData.password !== formData.password_confirm) {
+      this.authError = 'Las contraseñas no coinciden';
+      this.isSubmitting = false;
+      return;
     }
 
-    const userData = this.registerForm.getRawValue();
+    // Preparar datos para registro - INCLUIR password_confirm
+    const registerData = {
+      username: formData.username,
+      password: formData.password,
+      password_confirm: formData.password_confirm,  // ✅ Añadir este campo
+      email: formData.email,
+      first_name: formData.first_name || '',
+      last_name: formData.last_name || ''
+    };
 
-    this.authService.register(userData).subscribe({
-      next: () => {
-        this.showLogin(); 
+    console.log('Enviando datos de registro:', registerData);
+
+    this.authService.register(registerData).subscribe({
+      next: (response) => {
+        console.log('Registro exitoso:', response);
+        this.isSubmitting = false;
         this.authError = 'Registration successful! You can now log in.';
       },
-      error: (err) => {
-        let errorMessage = 'Registration failed.';
-        if (err.error) {
-            if (err.error.username) { errorMessage = err.error.username[0]; }
-            else if (err.error.email) { errorMessage = err.error.email[0]; }
-            else if (err.error.password) { errorMessage = err.error.password[0]; }
-            else if (err.error.password_confirm) { errorMessage = err.error.password_confirm[0]; }
-        }
-        this.authError = errorMessage;
+      error: (error: any) => {
+        console.error('Error en registro:', error);
+        this.isSubmitting = false;
+        this.authError = error.error?.detail || 'Error durante el registro';
       }
     });
+  } else {
+    this.markFormGroupTouched(this.registerForm);
   }
 }
 
-
-
-
+  private markFormGroupTouched(formGroup: FormGroup): void {
+    Object.keys(formGroup.controls).forEach(key => {
+      const control = formGroup.get(key);
+      control?.markAsTouched();
+      control?.updateValueAndValidity();
+    });
+  }
+}

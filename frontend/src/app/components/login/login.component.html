@@ -30,8 +30,14 @@
       </div>
       
       <div *ngIf="authError" class="p-3 text-sm rounded-lg" 
-           [ngClass]="{'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300': authError !== 'Registration successful! You can now log in.', 
-                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300': authError === 'Registration successful! You can now log in.'}">
+           [class.bg-red-100]="authError !== 'Registration successful! You can now log in.'"
+           [class.text-red-800]="authError !== 'Registration successful! You can now log in.'"
+           [class.dark:bg-red-900]="authError !== 'Registration successful! You can now log in.'"
+           [class.dark:text-red-300]="authError !== 'Registration successful! You can now log in.'"
+           [class.bg-green-100]="authError === 'Registration successful! You can now log in.'"
+           [class.text-green-800]="authError === 'Registration successful! You can now log in.'"
+           [class.dark:bg-green-900]="authError === 'Registration successful! You can now log in.'"
+           [class.dark:text-green-300]="authError === 'Registration successful! You can now log in.'">
         {{ authError }}
       </div>
   
@@ -58,13 +64,13 @@
         <button 
           class="w-full py-3 px-4 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:ring-offset-background-dark disabled:opacity-50" 
           type="submit"
-          [disabled]="loginForm.invalid">
-          Log In
+          [disabled]="loginForm.invalid || isSubmitting">
+          <span *ngIf="!isSubmitting">Log In</span>
+          <span *ngIf="isSubmitting">Loading...</span>
         </button>
       </form>
       
       <form class="space-y-6" *ngIf="!isLoginMode" [formGroup]="registerForm" (ngSubmit)="onRegisterSubmit()">
-
         <div>
             <label class="sr-only" for="register-username">Username</label>
             <input 
@@ -104,10 +110,11 @@
         <button 
             class="w-full py-3 px-4 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:ring-offset-background-dark disabled:opacity-50" 
             type="submit"
-            [disabled]="registerForm.invalid"> 
-            Create Account
+            [disabled]="registerForm.invalid || isSubmitting">
+            <span *ngIf="!isSubmitting">Create Account</span>
+            <span *ngIf="isSubmitting">Loading...</span>
         </button>
-    </form>
+      </form>
       
       <p class="text-center text-sm text-gray-600 dark:text-gray-400">
         <ng-container *ngIf="isLoginMode; else registerToggle">
@@ -120,4 +127,4 @@
         </ng-template>
       </p>
     </div>
-  </div>
+</div>

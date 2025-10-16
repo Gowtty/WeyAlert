@@ -14,12 +14,16 @@
           Alertas
         </a>
         @if (isAuthenticated()) {
+            <button class="relative p-2 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors">
+            <span class="material-symbols-outlined">notifications</span>
+            <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
           <a routerLink="/alerts/create" routerLinkActive="active" 
-             class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
+            class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
             Nueva Alerta
           </a>
           <a routerLink="/profile" routerLinkActive="active" 
-             class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
+            class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
             Perfil
           </a>
         }

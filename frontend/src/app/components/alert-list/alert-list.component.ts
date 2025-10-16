@@ -26,6 +26,7 @@ export class AlertListComponent implements OnInit, AfterViewInit {
   
   private map: L.Map | null = null;
   private markers: L.Marker[] = [];
+  private mapInitialized = false;
 
   constructor(
     private alertService: AlertService,
@@ -40,55 +41,119 @@ export class AlertListComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Inicializar mapa después de que la vista esté lista
+    // Inicializar el mapa después de un pequeño delay
     setTimeout(() => {
       this.initMap();
-    }, 100);
+    }, 300);
   }
 
   private initMap(): void {
-    if (!this.mapContainer) {
+    if (this.mapInitialized) return;
+    
+    const mapContainer = document.getElementById('map-container');
+    
+    if (!mapContainer) {
+      console.error('Map container not found');
+      setTimeout(() => this.initMap(), 200);
+      return;
+    }
+
+    // Verificar dimensiones del contenedor
+    if (mapContainer.offsetWidth === 0 || mapContainer.offsetHeight === 0) {
+      console.warn('Map container has zero dimensions, retrying...');
+      setTimeout(() => this.initMap(), 200);
       return;
     }
 
     try {
-      // Inicializar mapa centrado en una ubicación por defecto (CDMX)
-      this.map = L.map(this.mapContainer.nativeElement).setView([19.4326, -99.1332], 12);
+      // Limpiar mapa existente si hay uno
+      if (this.map) {
+        this.map.remove();
+        this.map = null;
+      }
 
-      // Añadir capa de tiles de OpenStreetMap
+      this.map = L.map(mapContainer).setView([19.4326, -99.1332], 12);
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18
       }).addTo(this.map);
 
-      // Añadir marcadores cuando las alertas estén cargadas
-      this.addMarkersToMap();
+      // Forzar redimensionamiento
+      setTimeout(() => {
+        if (this.map) {
+          this.map.invalidateSize();
+          this.mapInitialized = true;
+          // Añadir marcadores si ya hay alertas cargadas
+          if (this.allAlerts.length > 0) {
+            this.addMarkersToMap();
+          }
+        }
+      }, 300);
+      
     } catch (error) {
       console.error('Error initializing map:', error);
     }
   }
 
   private addMarkersToMap(): void {
-    if (!this.map || this.allAlerts.length === 0) return;
+    if (!this.map || !this.allAlerts.length) return;
 
     // Limpiar marcadores existentes
-    this.markers.forEach(marker => {
-      if (this.map) this.map.removeLayer(marker);
-    });
-    this.markers = [];
+    this.clearMarkers();
 
-    // Añadir marcadores para cada alerta
     this.allAlerts.forEach(alert => {
-      const customIcon = this.createCustomIcon(alert.category_detail);
-      
+      try {
+        const marker = this.createMarker(alert);
+        if (marker) {
+          this.markers.push(marker);
+        }
+      } catch (error) {
+        console.error('Error creating marker for alert:', alert.id, error);
+      }
+    });
+
+    // Si hay marcadores, ajustar la vista
+    if (this.markers.length > 0) {
+      setTimeout(() => {
+        this.showAllAlertsOnMap();
+      }, 100);
+    }
+  }
+
+  private createMarker(alert: Alert): L.Marker | null {
+    if (!this.map) return null;
+
+    try {
+      const color = alert.category_detail?.color || '#3B82F6';
+      const iconName = alert.category_detail?.icon || 'warning';
+
+      const customIcon = L.divIcon({
+        html: `
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white" 
+               style="background-color: ${color};">
+            <span class="material-symbols-outlined text-white text-sm">${iconName}</span>
+          </div>
+        `,
+        className: 'custom-marker',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
       const marker = L.marker([alert.latitude, alert.longitude], { icon: customIcon })
         .addTo(this.map!)
         .bindPopup(`
-          <div class="p-2">
-            <h3 class="font-bold text-sm">${alert.title}</h3>
-            <p class="text-xs text-gray-600">${alert.description}</p>
-            <p class="text-xs mt-1"><strong>Categoría:</strong> ${alert.category_detail?.name || 'Sin categoría'}</p>
-            <p class="text-xs"><strong>Estado:</strong> ${alert.status || 'active'}</p>
+          <div class="p-2 min-w-[200px]">
+            <h3 class="font-bold text-sm mb-1">${alert.title}</h3>
+            <p class="text-xs text-gray-600 mb-2">${alert.description.substring(0, 100)}...</p>
+            <div class="flex justify-between items-center text-xs">
+              <span class="px-2 py-1 rounded-full ${this.getStatusBadgeClass(alert.status)}">
+                ${alert.status || 'active'}
+              </span>
+              <span class="px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                ${alert.category_detail?.name || 'General'}
+              </span>
+            </div>
           </div>
         `);
 
@@ -96,25 +161,20 @@ export class AlertListComponent implements OnInit, AfterViewInit {
         this.viewAlertDetail(alert);
       });
 
-      this.markers.push(marker);
-    });
+      return marker;
+    } catch (error) {
+      console.error('Error creating marker:', error);
+      return null;
+    }
   }
 
-  private createCustomIcon(category: AlertCategory | undefined): L.DivIcon {
-    const color = category?.color || '#3B82F6'; // azul por defecto
-    const iconName = category?.icon || 'warning';
-    
-    return L.divIcon({
-      html: `
-        <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white" 
-             style="background-color: ${color};">
-          <span class="material-symbols-outlined text-white text-lg">${iconName}</span>
-        </div>
-      `,
-      className: 'custom-marker',
-      iconSize: [40, 40],
-      iconAnchor: [20, 40]
+  private clearMarkers(): void {
+    this.markers.forEach(marker => {
+      if (this.map) {
+        this.map.removeLayer(marker);
+      }
     });
+    this.markers = [];
   }
 
   centerMapOnUser(): void {
@@ -129,7 +189,6 @@ export class AlertListComponent implements OnInit, AfterViewInit {
         },
         (error) => {
           console.error('Error obteniendo ubicación:', error);
-          // Centrar en ubicación por defecto si no se puede obtener la ubicación
           this.map!.setView([19.4326, -99.1332], 10);
         }
       );
@@ -137,7 +196,7 @@ export class AlertListComponent implements OnInit, AfterViewInit {
   }
 
   showAllAlertsOnMap(): void {
-    if (!this.map || this.allAlerts.length === 0) return;
+    if (!this.map || this.markers.length === 0) return;
 
     const group = L.featureGroup(this.markers);
     this.map.fitBounds(group.getBounds().pad(0.1));
@@ -148,9 +207,9 @@ export class AlertListComponent implements OnInit, AfterViewInit {
       next: (alerts) => {
         this.myAlerts = alerts;
         this.isLoading = false;
-        // Actualizar marcadores en el mapa después de cargar las alertas
-        if (this.map) {
-          setTimeout(() => this.addMarkersToMap(), 500);
+        // Actualizar mapa si está en vista de mapa
+        if (this.activeView === 'map' && this.mapInitialized) {
+          setTimeout(() => this.addMarkersToMap(), 100);
         }
       },
       error: (error) => {
@@ -164,9 +223,9 @@ export class AlertListComponent implements OnInit, AfterViewInit {
     this.alertService.getAlerts().subscribe({
       next: (alerts) => {
         this.allAlerts = alerts;
-        // Actualizar marcadores en el mapa después de cargar las alertas
-        if (this.map) {
-          setTimeout(() => this.addMarkersToMap(), 500);
+        // Actualizar mapa si está en vista de mapa
+        if (this.activeView === 'map' && this.mapInitialized) {
+          setTimeout(() => this.addMarkersToMap(), 100);
         }
       },
       error: (error) => {
@@ -179,24 +238,41 @@ export class AlertListComponent implements OnInit, AfterViewInit {
     this.selectedAlert = alert;
     this.activeView = 'map';
     
-    // Centrar el mapa en la alerta seleccionada
-    if (this.map) {
-      this.map.setView([alert.latitude, alert.longitude], 15);
-      
-      // Abrir popup del marcador correspondiente
-      const marker = this.markers.find(m => {
-        const latLng = m.getLatLng();
-        return latLng.lat === alert.latitude && latLng.lng === alert.longitude;
-      });
-      if (marker) {
-        marker.openPopup();
-      }
+    // Si el mapa no está inicializado, inicializarlo
+    if (!this.mapInitialized) {
+      setTimeout(() => {
+        this.initMap();
+        // Después de inicializar, centrar en la alerta
+        setTimeout(() => {
+          this.centerMapOnAlert(alert);
+        }, 500);
+      }, 100);
+    } else {
+      this.centerMapOnAlert(alert);
+    }
+  }
+
+  private centerMapOnAlert(alert: Alert): void {
+    if (!this.map) return;
+    
+    this.map.setView([alert.latitude, alert.longitude], 15);
+    
+    // Abrir popup del marcador correspondiente
+    const marker = this.markers.find(m => {
+      const latLng = m.getLatLng();
+      return latLng.lat === alert.latitude && latLng.lng === alert.longitude;
+    });
+    if (marker) {
+      marker.openPopup();
     }
   }
 
   editAlert(alert: Alert): void {
     if (alert.id) {
       this.router.navigate(['/alert-edit', alert.id]);
+    } else {
+      console.error('Alert ID is undefined');
+      window.alert('Error: No se puede editar esta alerta');
     }
   }
 

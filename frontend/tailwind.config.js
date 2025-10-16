@@ -3,18 +3,18 @@ module.exports = {
   content: [
     "./src/**/*.{html,ts}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        primary: '#06f9f9',
-        'background-light': '#f5f8f8',
-        'background-dark': '#0f2323',
+        primary: '#00D4AA',
+        'background-dark': '#0A0F0F',
+        'background-light': '#FFFFFF',
       },
       fontFamily: {
-        display: ['Space Grotesk', 'Inter', 'sans-serif'],
-      },
+        'display': ['Space Grotesk', 'sans-serif'],
+      }
     },
   },
   plugins: [],
+  darkMode: 'class',
 }

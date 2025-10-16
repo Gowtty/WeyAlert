@@ -1,11 +1,12 @@
-import { Component, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, AfterViewInit, OnDestroy, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule, NgIf, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import * as L from 'leaflet';
 import { Subscription } from 'rxjs';
-import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
 import { AuthService } from '../../services/auth.service';
+import { AlertService, Alert } from '../../services/alert.service';
+
 @Component({
   selector: 'app-map',
   standalone: true,
@@ -18,23 +19,39 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private map: L.Map | undefined;
   private marker: L.Marker | undefined;
   private userMarker: L.Marker | undefined;
+  private alertMarkers: L.Marker[] = [];
+  
+  // Inputs for alert display
+  @Input() showAlerts: boolean = false;
+  @Input() alerts: Alert[] = [];
+  @Output() alertClicked = new EventEmitter<Alert>();
   
   // State for alert creation
   selectedLatitude: number | null = null;
   selectedLongitude: number | null = null;
   
   // Base coordinates 
-  private readonly DEFAULT_LAT = 38.9072;
-  private readonly DEFAULT_LNG = -77.0369;
+  private readonly DEFAULT_LAT = 19.4326;
+  private readonly DEFAULT_LNG = -99.1332;
   private readonly DEFAULT_ZOOM = 13;
 
   private readonly NOMINATIM_API = 'https://nominatim.openstreetmap.org/search?format=json&limit=1';
 
-  constructor(private http: HttpClient, private router: Router, private authService: AuthService) { }
+  constructor(
+    private http: HttpClient, 
+    private router: Router, 
+    private authService: AuthService,
+    private alertService: AlertService
+  ) { }
 
   ngAfterViewInit(): void {
     this.initMap();
-    this.locateUser(); 
+    this.locateUser();
+    
+    // Load alerts if showAlerts is true
+    if (this.showAlerts) {
+      this.loadAlerts();
+    }
   }
 
   ngOnDestroy(): void {
@@ -47,7 +64,6 @@ export class MapComponent implements AfterViewInit, OnDestroy {
    * Initializes the Leaflet map instance, tile layer, and click listener.
    */
   private initMap(): void {
-
     // Check if map is already initialized or container exists
     if (!document.getElementById('map-container')) {
         console.error('Map container not found.');
@@ -69,10 +85,111 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(this.map);
 
-    // Add click listener to select location
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
-      this.placeMarker(e.latlng.lat, e.latlng.lng);
+    // Add click listener to select location (only if not in alert display mode)
+    if (!this.showAlerts) {
+      this.map.on('click', (e: L.LeafletMouseEvent) => {
+        this.placeMarker(e.latlng.lat, e.latlng.lng);
+      });
+    }
+  }
+
+  /**
+   * Load and display alerts on the map
+   */
+  private loadAlerts(): void {
+    this.alertService.getAlerts().subscribe({
+      next: (alerts) => {
+        this.alerts = alerts;
+        this.displayAlertsOnMap();
+      },
+      error: (error) => {
+        console.error('Error loading alerts for map:', error);
+      }
     });
+  }
+
+  /**
+   * Display alerts as markers on the map
+   */
+  private displayAlertsOnMap(): void {
+    if (!this.map) return;
+
+    // Clear existing alert markers
+    this.alertMarkers.forEach(marker => {
+      this.map!.removeLayer(marker);
+    });
+    this.alertMarkers = [];
+
+    // Add markers for each alert
+    this.alerts.forEach(alert => {
+      const alertIcon = this.createAlertIcon(alert);
+      
+      const marker = L.marker([alert.latitude, alert.longitude], { 
+        icon: alertIcon,
+        title: alert.title
+      }).addTo(this.map!);
+
+      // Bind popup with alert information
+      marker.bindPopup(`
+        <div class="p-2 min-w-[200px]">
+          <h3 class="font-bold text-sm mb-1">${alert.title}</h3>
+          <p class="text-xs text-gray-600 mb-2">${alert.description}</p>
+          <div class="flex justify-between items-center text-xs">
+            <span class="px-2 py-1 rounded-full ${this.getStatusBadgeClass(alert.status)}">
+              ${alert.status || 'active'}
+            </span>
+            <button onclick="this.dispatchEvent(new CustomEvent('viewAlert', { detail: ${alert.id} }))" 
+                    class="px-2 py-1 bg-primary text-white text-xs rounded hover:bg-primary/90">
+              Ver detalles
+            </button>
+          </div>
+        </div>
+      `);
+
+      // Add click event
+      marker.on('click', () => {
+        this.alertClicked.emit(alert);
+      });
+
+      this.alertMarkers.push(marker);
+    });
+  }
+
+  /**
+   * Create custom icon for alert markers
+   */
+  private createAlertIcon(alert: Alert): L.DivIcon {
+    const category = alert.category_detail;
+    const color = category?.color || '#3B82F6';
+    const iconName = category?.icon || 'warning';
+
+    return L.divIcon({
+      html: `
+        <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white" 
+             style="background-color: ${color};">
+          <span class="material-symbols-outlined text-white text-lg">${iconName}</span>
+        </div>
+      `,
+      className: 'custom-alert-marker',
+      iconSize: [40, 40],
+      iconAnchor: [20, 40]
+    });
+  }
+
+  /**
+   * Get CSS class for status badge
+   */
+  private getStatusBadgeClass(status: string | undefined): string {
+    switch (status) {
+      case 'active':
+        return 'bg-red-100 text-red-800';
+      case 'resolved':
+        return 'bg-green-100 text-green-800';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   }
   
   /**
@@ -128,7 +245,11 @@ export class MapComponent implements AfterViewInit, OnDestroy {
           });
           
           this.userMarker = L.marker(userLocation, { icon: customIcon }).addTo(currentMap);
-          currentMap.setView(userLocation, 16); 
+          
+          // Only center on user if not showing alerts
+          if (!this.showAlerts) {
+            currentMap.setView(userLocation, 16);
+          }
         },
         (error) => {
           console.error('Geolocation failed:', error);
@@ -158,8 +279,11 @@ export class MapComponent implements AfterViewInit, OnDestroy {
             const newLocation = L.latLng(lat, lng);
 
             this.map!.setView(newLocation, 15);
-            this.placeMarker(lat, lng); 
-
+            
+            // Only place marker if not in alert display mode
+            if (!this.showAlerts) {
+              this.placeMarker(lat, lng);
+            }
           } else {
             alert(`No se encontraron resultados para "${query}"`);
           }

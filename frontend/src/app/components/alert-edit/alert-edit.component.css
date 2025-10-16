@@ -1,0 +1,15 @@
+.form-select, .form-textarea, .form-input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.form-select option {
+    background-color: #0f2323; 
+    color: #ffffff;
+}
+
+#mini-map-display {
+    height: 200px;
+    width: 100%;
+}
