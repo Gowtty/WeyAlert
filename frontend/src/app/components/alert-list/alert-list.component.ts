@@ -1,6 +1,6 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { AlertService, Alert, AlertCategory } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -31,13 +31,32 @@ export class AlertListComponent implements OnInit, AfterViewInit {
   constructor(
     private alertService: AlertService,
     private authService: AuthService,
-    public router: Router
+    public router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadMyAlerts();
     this.loadAllAlerts();
     this.currentUser = this.authService.getCurrentUser();
+    
+    // Check for query parameters from map navigation
+    this.route.queryParams.subscribe(params => {
+      if (params['view'] === 'map') {
+        this.activeView = 'map';
+        
+        // If alertId is provided, select that alert after loading
+        if (params['alertId']) {
+          const alertId = parseInt(params['alertId'], 10);
+          setTimeout(() => {
+            const alert = this.allAlerts.find(a => a.id === alertId);
+            if (alert) {
+              this.viewAlertDetail(alert);
+            }
+          }, 500);
+        }
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -143,14 +162,14 @@ export class AlertListComponent implements OnInit, AfterViewInit {
       const marker = L.marker([alert.latitude, alert.longitude], { icon: customIcon })
         .addTo(this.map!)
         .bindPopup(`
-          <div class="p-2 min-w-[200px]">
-            <h3 class="font-bold text-sm mb-1">${alert.title}</h3>
-            <p class="text-xs text-gray-600 mb-2">${alert.description.substring(0, 100)}...</p>
-            <div class="flex justify-between items-center text-xs">
-              <span class="px-2 py-1 rounded-full ${this.getStatusBadgeClass(alert.status)}">
+          <div style="min-width: 200px;">
+            <h3 style="font-weight: bold; color: #ffffff; font-size: 14px; margin: 0 0 8px 0;">${alert.title}</h3>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 12px 0;">${alert.description.substring(0, 100)}...</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <span style="padding: 4px 8px; border-radius: 9999px; font-size: 11px; ${this.getStatusBadgeStyle(alert.status)}">
                 ${alert.status || 'active'}
               </span>
-              <span class="px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+              <span style="padding: 4px 8px; border-radius: 9999px; font-size: 11px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.5);">
                 ${alert.category_detail?.name || 'General'}
               </span>
             </div>
@@ -335,5 +354,18 @@ export class AlertListComponent implements OnInit, AfterViewInit {
     };
     
     return colorMap[category.color] || colorMap['blue'];
+  }
+  
+  private getStatusBadgeStyle(status: string | undefined): string {
+    switch (status) {
+      case 'active':
+        return 'background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5);';
+      case 'resolved':
+        return 'background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.5);';
+      case 'expired':
+        return 'background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.5);';
+      default:
+        return 'background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.5);';
+    }
   }
 }

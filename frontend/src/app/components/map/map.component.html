@@ -49,15 +49,73 @@
                 </button>
             </div>
         </div>
+     
         
-        <!-- Floating Controls (Left Side - Locate Me) -->
+        <!-- Floating Controls (Left Side) -->
         <div class="absolute top-44 left-4 flex flex-col gap-2 pointer-events-auto sm:top-52 z-30">
+           <!-- Alert Count Badge -->
+           <div *ngIf="alertsVisible && alerts.length > 0" 
+                class="flex flex-col items-center justify-center space-y-0">   
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-background-dark/90 shadow-xl backdrop-blur-sm">
+                    <div class="text-center">
+                        <span class="text-primary font-bold">{{getAlertCount()}}</span>
+                    </div>
+                </div>
+                
+                <div class="relative flex h-7 w-16 items-center justify-center rounded-2xl bg-background-dark/90 shadow-xl backdrop-blur-sm -mt-2 bottom-3">
+                    <div class="text-center">
+                        <span class="text-primary text-xs">alertas</span>
+                    </div>
+                </div>   
+            </div>              
+            <!-- Locate Me Button -->
             <button (click)="locateUser()" class="flex h-14 w-14 items-center justify-center rounded-full bg-background-dark/70 text-white shadow-xl backdrop-blur-sm transition-colors hover:bg-primary/20">
                 <span class="material-symbols-outlined text-primary !text-3xl">near_me</span>
+            </button>
+            
+            <!-- Toggle Alerts Button -->
+            <button (click)="toggleAlerts()" 
+                    [ngClass]="{'bg-primary/30': alertsVisible}"
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-background-dark/70 text-white shadow-xl backdrop-blur-sm transition-colors hover:bg-primary/20">
+                <span class="material-symbols-outlined !text-3xl" [ngClass]="{'text-primary': alertsVisible, 'text-white': !alertsVisible}">
+                    {{alertsVisible ? 'visibility' : 'visibility_off'}}
+                </span>
+            </button>
+            
+            <!-- Refresh Alerts Button -->
+            <button (click)="refreshAlerts()" 
+                    *ngIf="alertsVisible"
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-background-dark/70 text-white shadow-xl backdrop-blur-sm transition-colors hover:bg-primary/20">
+                <span class="material-symbols-outlined text-primary !text-3xl">refresh</span>
             </button>
         </div>
 
         <div class="absolute top-4 right-4 flex flex-col items-end gap-4 pointer-events-auto sm:top-6 z-30">
+            <!-- Category Filter Panel -->
+            <div *ngIf="alertsVisible && availableCategories.length > 0" 
+                 class="max-w-xs bg-background-dark/90 rounded-xl shadow-2xl p-4">
+                <h3 class="text-white font-bold mb-3 flex items-center justify-between">
+                    <span>Filtrar Alertas</span>
+                    <span class="text-xs text-gray-400">{{getTimeSinceUpdate()}}</span>
+                </h3>
+                <div class="space-y-2 max-h-60 overflow-y-auto">
+                    <div *ngFor="let category of availableCategories" 
+                         (click)="toggleCategory(category.key)"
+                         class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors hover:bg-white/10"
+                         [ngClass]="{'bg-white/20': selectedCategories.has(category.key)}">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center" 
+                             [style.backgroundColor]="category.color">
+                            <span class="material-symbols-outlined text-white !text-sm">{{category.icon}}</span>
+                        </div>
+                        <span class="text-white text-sm flex-1">{{category.name}}</span>
+                        <span class="material-symbols-outlined text-white !text-lg">
+                            {{selectedCategories.has(category.key) ? 'check_box' : 'check_box_outline_blank'}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zoom Controls -->
             <div class="flex flex-col gap-px rounded-xl bg-background-dark/70 shadow-xl backdrop-blur-sm overflow-hidden">
                 <!-- Zoom In -->
                 <button (click)="zoomIn()" class="flex h-12 w-12 items-center justify-center text-white transition-colors hover:bg-primary/20">

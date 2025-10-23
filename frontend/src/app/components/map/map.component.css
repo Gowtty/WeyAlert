@@ -8,3 +8,67 @@
  .map-page-container {
      min-height: 90vh;
  }
+
+ /* Custom styles for alert markers */
+ .custom-alert-marker {
+     cursor: pointer;
+     transition: transform 0.2s;
+ }
+
+ .custom-alert-marker:hover {
+     transform: scale(1.1);
+     z-index: 1000 !important;
+ }
+
+ /* Force dark theme on Leaflet popups using ng-deep for Angular component encapsulation */
+ :host ::ng-deep .leaflet-popup-content-wrapper {
+     background: #2d2d2d !important;
+     color: white !important;
+     border-radius: 8px !important;
+     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+ }
+
+ :host ::ng-deep .leaflet-popup-tip {
+     background: #2d2d2d !important;
+ }
+
+ :host ::ng-deep .leaflet-popup-content {
+     margin: 12px 14px !important;
+     color: white !important;
+     background: transparent !important;
+     width: auto !important;
+ }
+
+ :host ::ng-deep .leaflet-popup-close-button {
+     color: rgb(156, 163, 175) !important;
+     font-size: 20px !important;
+     font-weight: 300 !important;
+     padding: 4px 8px 0 0 !important;
+ }
+
+ :host ::ng-deep .leaflet-popup-close-button:hover {
+     color: white !important;
+ }
+
+ :host ::ng-deep .leaflet-container a.leaflet-popup-close-button {
+     background: transparent !important;
+ }
+
+ /* Scrollbar styling for category filter */
+ .max-h-60::-webkit-scrollbar {
+     width: 6px;
+ }
+
+ .max-h-60::-webkit-scrollbar-track {
+     background: rgba(255, 255, 255, 0.1);
+     border-radius: 3px;
+ }
+
+ .max-h-60::-webkit-scrollbar-thumb {
+     background: rgba(255, 255, 255, 0.3);
+     border-radius: 3px;
+ }
+
+ .max-h-60::-webkit-scrollbar-thumb:hover {
+     background: rgba(255, 255, 255, 0.5);
+ }

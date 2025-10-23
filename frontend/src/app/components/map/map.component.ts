@@ -30,6 +30,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   selectedLatitude: number | null = null;
   selectedLongitude: number | null = null;
   
+  // Alert visualization state
+  alertsVisible: boolean = true;
+  availableCategories: any[] = [];
+  selectedCategories: Set<string> = new Set();
+  lastUpdateTime: Date | null = null;
+  private refreshInterval: any;
+  
   // Base coordinates 
   private readonly DEFAULT_LAT = 19.4326;
   private readonly DEFAULT_LNG = -99.1332;
@@ -48,15 +55,24 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.initMap();
     this.locateUser();
     
-    // Load alerts if showAlerts is true
-    if (this.showAlerts) {
+    // Always load alerts for real-time visualization
+    this.loadAlerts();
+    this.loadCategories();
+    
+    // Set up auto-refresh every 30 seconds
+    this.refreshInterval = setInterval(() => {
       this.loadAlerts();
-    }
+    }, 30000);
   }
 
   ngOnDestroy(): void {
     if (this.map) {
       this.map.remove();
+    }
+    
+    // Clear refresh interval
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
     }
   }
 
@@ -85,12 +101,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(this.map);
 
-    // Add click listener to select location (only if not in alert display mode)
-    if (!this.showAlerts) {
-      this.map.on('click', (e: L.LeafletMouseEvent) => {
+    // Add click listener to select location for creating alerts
+    this.map.on('click', (e: L.LeafletMouseEvent) => {
+      // Only place marker for alert creation if not clicking on an existing alert marker
+      const target = e.originalEvent.target as HTMLElement;
+      if (!target.closest('.custom-alert-marker')) {
         this.placeMarker(e.latlng.lat, e.latlng.lng);
-      });
-    }
+      }
+    });
   }
 
   /**
@@ -100,10 +118,29 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.alertService.getAlerts().subscribe({
       next: (alerts) => {
         this.alerts = alerts;
-        this.displayAlertsOnMap();
+        this.lastUpdateTime = new Date();
+        if (this.alertsVisible) {
+          this.displayAlertsOnMap();
+        }
       },
       error: (error) => {
         console.error('Error loading alerts for map:', error);
+      }
+    });
+  }
+  
+  /**
+   * Load available categories for filtering
+   */
+  private loadCategories(): void {
+    this.alertService.getAlertCategories().subscribe({
+      next: (categories) => {
+        this.availableCategories = categories;
+        // Initialize all categories as selected
+        categories.forEach(cat => this.selectedCategories.add(cat.key));
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
       }
     });
   }
@@ -120,8 +157,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     });
     this.alertMarkers = [];
 
-    // Add markers for each alert
-    this.alerts.forEach(alert => {
+    // Filter alerts based on selected categories
+    const filteredAlerts = this.alerts.filter(alert => 
+      this.selectedCategories.has(alert.category)
+    );
+
+    // Add markers for each filtered alert
+    filteredAlerts.forEach(alert => {
       const alertIcon = this.createAlertIcon(alert);
       
       const marker = L.marker([alert.latitude, alert.longitude], { 
@@ -130,21 +172,43 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       }).addTo(this.map!);
 
       // Bind popup with alert information
-      marker.bindPopup(`
-        <div class="p-2 min-w-[200px]">
-          <h3 class="font-bold text-sm mb-1">${alert.title}</h3>
-          <p class="text-xs text-gray-600 mb-2">${alert.description}</p>
-          <div class="flex justify-between items-center text-xs">
-            <span class="px-2 py-1 rounded-full ${this.getStatusBadgeClass(alert.status)}">
+      const popupContent = `
+        <div style="min-width: 250px;">
+          <h3 style="font-weight: bold; color: #ffffff; font-size: 14px; margin: 0 0 8px 0;">${alert.title}</h3>
+          <p style="font-size: 12px; color: #d1d5db; margin: 0 0 12px 0; line-height: 1.4;">
+            ${alert.description.substring(0, 100)}${alert.description.length > 100 ? '...' : ''}
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="padding: 4px 8px; border-radius: 9999px; font-size: 11px; ${this.getStatusBadgeStyle(alert.status)}">
               ${alert.status || 'active'}
             </span>
-            <button onclick="this.dispatchEvent(new CustomEvent('viewAlert', { detail: ${alert.id} }))" 
-                    class="px-2 py-1 bg-primary text-white text-xs rounded hover:bg-primary/90">
+            <button id="alert-detail-${alert.id}" 
+                    style="padding: 6px 12px; background: #00d0a7; color: white; font-size: 12px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: background 0.2s;"
+                    onmouseover="this.style.backgroundColor='rgb(0, 169, 135)'" 
+                    onmouseout="this.style.backgroundColor='#00d0a7'">
               Ver detalles
             </button>
           </div>
         </div>
-      `);
+      `;
+      
+      marker.bindPopup(popupContent, {
+        className: 'dark-popup',
+        closeButton: true,
+        minWidth: 250
+      });
+      
+      // Add event listener for the button after popup opens
+      marker.on('popupopen', () => {
+        const button = document.getElementById(`alert-detail-${alert.id}`);
+        if (button) {
+          button.addEventListener('click', () => {
+            this.router.navigate(['/alerts'], { 
+              queryParams: { alertId: alert.id, view: 'map' } 
+            });
+          });
+        }
+      });
 
       // Add click event
       marker.on('click', () => {
@@ -182,13 +246,29 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private getStatusBadgeClass(status: string | undefined): string {
     switch (status) {
       case 'active':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500/20 text-red-400 border border-red-500/30';
       case 'resolved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/20 text-green-400 border border-green-500/30';
       case 'expired':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+    }
+  }
+  
+  /**
+   * Get inline styles for status badge in popup
+   */
+  private getStatusBadgeStyle(status: string | undefined): string {
+    switch (status) {
+      case 'active':
+        return 'background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5);';
+      case 'resolved':
+        return 'background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.5);';
+      case 'expired':
+        return 'background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.5);';
+      default:
+        return 'background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.5);';
     }
   }
   
@@ -246,10 +326,8 @@ export class MapComponent implements AfterViewInit, OnDestroy {
           
           this.userMarker = L.marker(userLocation, { icon: customIcon }).addTo(currentMap);
           
-          // Only center on user if not showing alerts
-          if (!this.showAlerts) {
-            currentMap.setView(userLocation, 16);
-          }
+          // Center on user location
+          currentMap.setView(userLocation, 16);
         },
         (error) => {
           console.error('Geolocation failed:', error);
@@ -280,10 +358,8 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
             this.map!.setView(newLocation, 15);
             
-            // Only place marker if not in alert display mode
-            if (!this.showAlerts) {
-              this.placeMarker(lat, lng);
-            }
+            // Place marker for alert creation
+            this.placeMarker(lat, lng);
           } else {
             alert(`No se encontraron resultados para "${query}"`);
           }
@@ -324,5 +400,65 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.router.navigate(['/login'])
       alert('Por favor, inicia sesión para crear una alerta.');
     }
+  }
+  
+  /**
+   * Toggle visibility of alerts on the map
+   */
+  toggleAlerts(): void {
+    this.alertsVisible = !this.alertsVisible;
+    if (this.alertsVisible) {
+      this.displayAlertsOnMap();
+    } else {
+      // Clear alert markers
+      this.alertMarkers.forEach(marker => {
+        this.map!.removeLayer(marker);
+      });
+      this.alertMarkers = [];
+    }
+  }
+  
+  /**
+   * Toggle category filter
+   */
+  toggleCategory(categoryKey: string): void {
+    if (this.selectedCategories.has(categoryKey)) {
+      this.selectedCategories.delete(categoryKey);
+    } else {
+      this.selectedCategories.add(categoryKey);
+    }
+    if (this.alertsVisible) {
+      this.displayAlertsOnMap();
+    }
+  }
+  
+  /**
+   * Manually refresh alerts
+   */
+  refreshAlerts(): void {
+    this.loadAlerts();
+  }
+  
+  /**
+   * Get time since last update
+   */
+  getTimeSinceUpdate(): string {
+    if (!this.lastUpdateTime) return 'Nunca';
+    
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - this.lastUpdateTime.getTime()) / 1000);
+    
+    if (diff < 60) return `Hace ${diff} segundos`;
+    if (diff < 3600) return `Hace ${Math.floor(diff / 60)} minutos`;
+    return `Hace ${Math.floor(diff / 3600)} horas`;
+  }
+  
+  /**
+   * Get filtered alert count
+   */
+  getAlertCount(): number {
+    return this.alerts.filter(alert => 
+      this.selectedCategories.has(alert.category)
+    ).length;
   }
 }
