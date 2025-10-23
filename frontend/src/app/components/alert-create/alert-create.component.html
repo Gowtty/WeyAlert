@@ -1,6 +1,6 @@
 <div class="flex flex-col min-h-screen bg-background-light dark:bg-background-dark font-display text-white">
     <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 class="text-4xl font-bold text-black dark:text-white mb-8">Reportar Alerta</h2>
+        <h2 class="text-4xl font-bold text-black dark:text-white mb-8">Crear Alerta</h2>
 
         <!-- Mensaje de estado -->
         <div *ngIf="apiMessage" 
@@ -18,7 +18,7 @@
                     formControlName="category"
                     class="w-full bg-background-dark/50 border border-gray-700 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent">
                     <option value="">Selecciona una categoría</option>
-                    <option *ngFor="let category of categories" [value]="category.id">
+                    <option *ngFor="let category of categories" [value]="category.key">
                         {{ category.name }}
                     </option>
                 </select>

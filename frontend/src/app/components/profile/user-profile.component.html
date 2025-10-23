@@ -16,13 +16,6 @@
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-semibold text-white">Información de Perfil</h3>
                         <button> 
-                            (click)="isEditing = !isEditing"
-                            class="px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-                            [class.bg-gray-600]="isEditing"
-                            [class.hover:bg-gray-700]="isEditing"
-                            [class.bg-primary]="!isEditing"
-                            [class.hover:bg-primary/90]="!isEditing"
-                            [class.text-background-dark]="!isEditing">
                             <span class="material-symbols-outlined text-lg">
                                 {{ isEditing ? 'close' : 'edit' }}
                             </span>

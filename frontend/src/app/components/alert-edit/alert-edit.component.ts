@@ -7,7 +7,7 @@ import { AlertService, Alert } from '../../services/alert.service';
 import { API_BASE_URL } from '../../config';
 
 interface AlertCategory {
-  id: number;
+  key: string;
   name: string;
   icon: string;
   color: string;
@@ -79,7 +79,7 @@ export class AlertEditComponent implements OnInit {
   }
 
   fetchCategories(): void {
-    this.alertService.getCategories().subscribe({
+    this.alertService.getAlertCategories().subscribe({
       next: (data) => {
         this.categories = data;
       },

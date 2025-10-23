@@ -239,8 +239,8 @@ private loadCategories(): void {
 }
 
   getSelectedCategory(): AlertCategory | undefined {
-    const categoryId = this.alertForm.get('category')?.value;
-    return this.categories.find(cat => cat.id === categoryId);
+    const categoryKey = this.alertForm.get('category')?.value;
+    return this.categories.find(cat => cat.key === categoryKey);
   }
 
   

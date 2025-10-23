@@ -8,8 +8,8 @@ export interface Alert {
   id?: number;
   title: string;
   description: string;
-  category: number;
-  category_detail?: any;
+  category: string;  // Changed from number to string (category key)
+  category_detail?: AlertCategory;
   latitude: number;
   longitude: number;
   status?: string;
@@ -19,7 +19,7 @@ export interface Alert {
 }
 
 export interface AlertCategory {
-  id: number;
+  key: string;  // Added key field
   name: string;
   description: string;
   icon: string;
@@ -58,7 +58,8 @@ export class AlertService {
   }
 
   getAlertCategories(): Observable<AlertCategory[]> {
-    return this.http.get<AlertCategory[]>(`${this.apiUrl}/alert-categories/`, {
+    // Using new categories endpoint that returns dictionary-based categories
+    return this.http.get<AlertCategory[]>(`${this.apiUrl}/categories/`, {
       headers: this.authService.getAuthHeaders()
     }).pipe(
       catchError((error: HttpErrorResponse) => { // ✅ Especificar tipo
