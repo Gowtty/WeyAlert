@@ -5,15 +5,19 @@ from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from .models import Alert, AlertCategory, UserProfile
+from .models import Alert, UserProfile
 from .serializers import (
-    AlertSerializer, AlertCreateSerializer, AlertCategorySerializer,
+    AlertSerializer, AlertCreateSerializer,
     UserSerializer, UserRegistrationSerializer, UserProfileSerializer
 )
+from .categories import get_all_categories
 
-class AlertCategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = AlertCategory.objects.all()
-    serializer_class = AlertCategorySerializer
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def categories_list(request):
+    """Returns all available categories from the dictionary configuration"""
+    categories = get_all_categories()
+    return Response(categories)
 
 class AlertViewSet(viewsets.ModelViewSet):
     queryset = Alert.objects.all()

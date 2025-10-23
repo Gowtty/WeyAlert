@@ -4,12 +4,14 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'alerts', views.AlertViewSet)
-router.register(r'alert-categories', views.AlertCategoryViewSet)  # Cambiado de 'categories' a 'alert-categories'
 router.register(r'profiles', views.UserProfileViewSet)
 
 urlpatterns = [
     # Incluir las rutas del router bajo /api/
     path('', include(router.urls)),
+    
+    # Categories from dictionary
+    path('categories/', views.categories_list, name='categories-list'),
     
     # Rutas de autenticación - CORREGIDAS
     path('auth/register/', views.UserRegisterView.as_view(), name='register'),

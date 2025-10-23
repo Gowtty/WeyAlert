@@ -2,15 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
-class AlertCategory(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, blank=True)
-    color = models.CharField(max_length=7, default='#3B82F6')  # Color en hex
-    
-    def __str__(self):
-        return self.name
+from .categories import get_category_choices, get_category
 
 class Alert(models.Model):
     STATUS_CHOICES = [
@@ -22,12 +14,16 @@ class Alert(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')
     title = models.CharField(max_length=200)
     description = models.TextField()
-    category = models.ForeignKey(AlertCategory, on_delete=models.CASCADE, related_name='alerts')
+    category = models.CharField(max_length=50, choices=get_category_choices())
     latitude = models.FloatField()
     longitude = models.FloatField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    def get_category_detail(self):
+        """Returns the full category data from the dictionary"""
+        return get_category(self.category)
     
     def __str__(self):
         return self.title

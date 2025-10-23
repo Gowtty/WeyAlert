@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Alert, AlertCategory, UserProfile
+from .models import Alert, UserProfile
+from .categories import get_category
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,19 +35,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['user', 'phone', 'avatar', 'alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
         read_only_fields = ['alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
 
-class AlertCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AlertCategory
-        fields = '__all__'
-
 class AlertSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    category_detail = AlertCategorySerializer(source='category', read_only=True)
+    category_detail = serializers.SerializerMethodField()
     
     class Meta:
         model = Alert
         fields = '__all__'
         read_only_fields = ['user', 'created_at', 'updated_at']
+    
+    def get_category_detail(self, obj):
+        """Returns the full category data from the dictionary"""
+        category_data = get_category(obj.category)
+        if category_data:
+            return {
+                'key': obj.category,
+                **category_data
+            }
+        return None
 
 class AlertCreateSerializer(serializers.ModelSerializer):
     class Meta:
