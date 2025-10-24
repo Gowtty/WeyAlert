@@ -49,6 +49,7 @@
                         <thead>
                             <tr class="bg-background-dark/80">
                                 <th class="px-6 py-4 text-left text-sm font-medium text-white/70 uppercase tracking-wider">Título</th>
+                                <th class="px-6 py-4 text-left text-sm font-medium text-white/70 uppercase tracking-wider">Usuario</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-white/70 uppercase tracking-wider">Categoría</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-white/70 uppercase tracking-wider">Ubicación</th>
                                 <th class="px-6 py-4 text-left text-sm font-medium text-white/70 uppercase tracking-wider">Estado</th>
@@ -61,6 +62,9 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-white">{{ alert.title }}</div>
                                     <div class="text-sm text-white/50 truncate max-w-xs">{{ alert.description }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-white/70">{{ alert.user?.username || 'Anónimo' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getCategoryBadgeClass(alert.category_detail)">
@@ -178,7 +182,21 @@
                         <!-- Selected Alert Details -->
                         <div *ngIf="selectedAlert" class="mt-6 p-4 bg-background-dark/30 rounded-lg border border-primary/20">
                             <h3 class="text-lg font-semibold text-white mb-3">{{ selectedAlert.title }}</h3>
+                            
+                            <!-- Image Display -->
+                            <div *ngIf="selectedAlert.image" class="mb-4">
+                                <div class="aspect-video w-full bg-gray-800 rounded-lg overflow-hidden">
+                                    <img [src]="getImageUrl(selectedAlert.image)" 
+                                         alt="Imagen de alerta" 
+                                         class="w-full h-full object-cover">
+                                </div>
+                            </div>
+                            
                             <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p class="text-white/70">Usuario:</p>
+                                    <p class="text-white mt-1">{{ selectedAlert.user?.username || 'Anónimo' }}</p>
+                                </div>
                                 <div>
                                     <p class="text-white/70">Categoría:</p>
                                     <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ' + getCategoryBadgeClass(selectedAlert.category_detail)">

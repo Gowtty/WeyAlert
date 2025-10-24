@@ -12,6 +12,7 @@ export interface Alert {
   category_detail?: AlertCategory;
   latitude: number;
   longitude: number;
+  image?: string;
   status?: string;
   user?: any;
   created_at?: string;

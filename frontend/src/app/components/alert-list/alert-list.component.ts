@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { AlertService, Alert, AlertCategory } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
+import { API_BASE_URL } from '../../config';
 
 // Importación correcta de Leaflet
 import * as L from 'leaflet';
@@ -164,6 +165,7 @@ export class AlertListComponent implements OnInit, AfterViewInit {
         .bindPopup(`
           <div style="min-width: 200px;">
             <h3 style="font-weight: bold; color: #ffffff; font-size: 14px; margin: 0 0 8px 0;">${alert.title}</h3>
+            <p style="font-size: 11px; color: #6b7280; margin: 0 0 6px 0;">Por: ${alert.user?.username || 'Anónimo'}</p>
             <p style="font-size: 12px; color: #9ca3af; margin: 0 0 12px 0;">${alert.description.substring(0, 100)}...</p>
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
               <span style="padding: 4px 8px; border-radius: 9999px; font-size: 11px; ${this.getStatusBadgeStyle(alert.status)}">
@@ -367,5 +369,21 @@ export class AlertListComponent implements OnInit, AfterViewInit {
       default:
         return 'background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.5);';
     }
+  }
+
+  getImageUrl(imagePath: string | undefined): string {
+    if (!imagePath) {
+      return '';
+    }
+    // If it's already a full URL, return it
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    // If it starts with /media/, prepend the API base URL
+    if (imagePath.startsWith('/media/')) {
+      return `${API_BASE_URL}${imagePath}`;
+    }
+    // Otherwise, prepend the API base URL with /media/
+    return `${API_BASE_URL}/media/${imagePath}`;
   }
 }

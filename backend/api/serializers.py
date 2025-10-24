@@ -38,6 +38,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class AlertSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     category_detail = serializers.SerializerMethodField()
+    image = serializers.ImageField(required=False, allow_null=True)
     
     class Meta:
         model = Alert
@@ -55,6 +56,8 @@ class AlertSerializer(serializers.ModelSerializer):
         return None
 
 class AlertCreateSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False, allow_null=True)
+    
     class Meta:
         model = Alert
-        fields = ['category', 'title', 'description', 'latitude', 'longitude']
+        fields = ['category', 'title', 'description', 'latitude', 'longitude', 'image']

@@ -17,6 +17,7 @@ class Alert(models.Model):
     category = models.CharField(max_length=50, choices=get_category_choices())
     latitude = models.FloatField()
     longitude = models.FloatField()
+    image = models.ImageField(upload_to='alerts/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
