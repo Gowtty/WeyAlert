@@ -13,27 +13,40 @@
            class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
           Alertas
         </a>
-        @if (isAuthenticated()) {
-            <button class="relative p-2 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors">
-            <span class="material-symbols-outlined">notifications</span>
-            <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-          <a routerLink="/alerts/create" routerLinkActive="active" 
-            class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
-            Nueva Alerta
-          </a>
-          <a routerLink="/profile" routerLinkActive="active" 
-            class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors [&.active]:text-primary">
-            Perfil
-          </a>
-        }
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
         @if (isAuthenticated()) {
-          <button (click)="logout()" 
-                  class="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-800 dark:text-white hover:bg-red-500/20 transition-colors">
-            Cerrar Sesión
+          <!-- Notifications -->
+          <button class="relative flex items-center justify-center w-12 h-12 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
+            <span class="material-symbols-outlined text-[26px]">notifications</span>
+            <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
           </button>
+          
+          <!-- User Avatar Dropdown -->
+          <div class="relative group">
+            <a routerLink="/profile" 
+               class="flex items-center justify-center w-12 h-12 rounded-full hover:bg-primary/10 transition-colors"
+               title="{{ username }}">
+              <img [src]="userAvatar || 'assets/default-avatar.svg'" 
+                   alt="Avatar" 
+                   class="w-10 h-10 rounded-full object-cover border-2 border-primary/50">
+            </a>
+            
+            <!-- Dropdown Menu -->
+            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30">
+              <a routerLink="/profile" 
+                 class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-t-lg">
+                <span class="material-symbols-outlined text-lg">person</span>
+                Mi Perfil
+              </a>
+              <hr class="border-gray-200 dark:border-gray-700">
+              <button (click)="logout()" 
+                      class="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-b-lg text-left">
+                <span class="material-symbols-outlined text-lg">logout</span>
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
         } @else {
           <a routerLink="/login" 
              class="rounded-lg px-5 py-2.5 text-sm font-semibold text-gray-800 dark:text-white hover:bg-primary/20 transition-colors">
@@ -50,4 +63,5 @@
   </header>
 
   <router-outlet />
+  <app-toast />
 </div>

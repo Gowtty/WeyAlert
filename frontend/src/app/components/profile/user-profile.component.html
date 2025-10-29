@@ -15,7 +15,9 @@
                 <div class="bg-background-dark/50 rounded-lg border border-primary/20 shadow-inner p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-semibold text-white">Información de Perfil</h3>
-                        <button> 
+                        <button
+                            (click)="toggleEditMode()"
+                            class="flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors">
                             <span class="material-symbols-outlined text-lg">
                                 {{ isEditing ? 'close' : 'edit' }}
                             </span>
@@ -26,9 +28,9 @@
                     <div class="flex items-center space-x-6 mb-6">
                         <div class="relative">
                             <img 
-                                [src]="imagePreviewUrl || 'assets/default-avatar.png'" 
+                                [src]="imagePreviewUrl || 'assets/default-avatar.svg'" 
                                 alt="Avatar" 
-                                class="w-24 h-24 rounded-full object-cover border-2 border-primary">
+                                class="w-24 h-24 rounded-full object-cover border-2 border-primary bg-gray-200">
                             <button 
                                 *ngIf="isEditing"
                                 (click)="triggerFileInput()" 
@@ -44,9 +46,9 @@
                         </div>
                         <div>
                             <h4 class="text-xl font-semibold text-white">
-                                {{ userProfile.user.first_name }} {{ userProfile.user.last_name }}
+                                {{ userProfile.user.username }}
                             </h4>
-                            <p class="text-white/70">{{ userProfile.user.username }}</p>
+                            <p class="text-white/70">{{ userProfile.user.email }}</p>
                             <p class="text-white/70">Miembro desde: {{ formatDate(userProfile.created_at) }}</p>
                         </div>
                     </div>
@@ -61,52 +63,33 @@
                                     [readonly]="!isEditing"
                                     [class]="isEditing ? 
                                         'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
-                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
+                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70 cursor-not-allowed'">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-white/70 mb-2">Teléfono</label>
                                 <input 
                                     type="tel" 
                                     formControlName="phone" 
+                                    placeholder="Agregar teléfono"
                                     [readonly]="!isEditing"
                                     [class]="isEditing ? 
                                         'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
-                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-white/70 mb-2">Nombre</label>
-                                <input 
-                                    type="text" 
-                                    formControlName="first_name" 
-                                    [readonly]="!isEditing"
-                                    [class]="isEditing ? 
-                                        'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
-                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-white/70 mb-2">Apellido</label>
-                                <input 
-                                    type="text" 
-                                    formControlName="last_name" 
-                                    [readonly]="!isEditing"
-                                    [class]="isEditing ? 
-                                        'w-full border border-gray-700 bg-background-dark/50 rounded-lg h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent' : 
-                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70'">
+                                        'w-full border border-transparent bg-background-dark/30 rounded-lg h-12 px-4 text-white/70 cursor-not-allowed'">
                             </div>
                         </div>
 
                         <div *ngIf="isEditing" class="flex gap-4 pt-4">
                             <button 
                                 type="button"
-                                (click)="isEditing = false" 
+                                (click)="cancelEdit()" 
                                 class="flex-1 px-8 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-all duration-300">
                                 Cancelar
                             </button>
                             <button 
                                 type="submit"
-                                [disabled]="isSubmitting"
+                                [disabled]="isSubmitting || profileForm.invalid"
                                 class="flex-1 px-8 py-3 bg-primary text-background-dark font-bold rounded-lg hover:bg-primary/90 transition-all duration-300 disabled:opacity-50">
-                                <span *ngIf="!isSubmitting">Guardar Cambios</span>
+                                <span *ngIf="!isSubmitting">Guardar</span>
                                 <span *ngIf="isSubmitting">Guardando...</span>
                             </button>
                         </div>
@@ -232,7 +215,7 @@
         <!-- Mensaje de estado -->
         <div 
             *ngIf="message" 
-            class="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transition-all duration-300"
+            class="fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-50"
             [class.bg-green-500]="isSuccess"
             [class.bg-red-500]="!isSuccess">
             {{ message }}

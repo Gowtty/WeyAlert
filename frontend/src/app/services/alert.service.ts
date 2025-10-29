@@ -17,6 +17,9 @@ export interface Alert {
   user?: any;
   created_at?: string;
   updated_at?: string;
+  likes_count?: number;
+  dislikes_count?: number;
+  user_reaction?: 'like' | 'dislike' | null;
 }
 
 export interface AlertCategory {
@@ -101,5 +104,21 @@ export class AlertService {
     return this.http.get<Alert>(`${this.apiUrl}/alerts/${id}/`, { 
       headers: this.getAuthHeaders() 
     });
+  }
+
+  reactToAlert(alertId: number, reactionType: 'like' | 'dislike' | 'remove'): Observable<Alert> {
+    const headers = this.getAuthHeaders();
+    return this.http.post<Alert>(
+      `${this.apiUrl}/alerts/${alertId}/react/`,
+      { reaction_type: reactionType },
+      { headers }
+    ).pipe(
+      catchError((error) => {
+        if (error.status === 401) {
+          this.authService.logout();
+        }
+        return throwError(() => error);
+      })
+    );
   }
 }

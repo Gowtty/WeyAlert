@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
-import { AlertService, Alert, AlertCategory } from '../../services/alert.service';
+import { AlertService, Alert } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
 import { API_BASE_URL } from '../../config';
 
@@ -167,12 +167,22 @@ export class AlertListComponent implements OnInit, AfterViewInit {
             <h3 style="font-weight: bold; color: #ffffff; font-size: 14px; margin: 0 0 8px 0;">${alert.title}</h3>
             <p style="font-size: 11px; color: #6b7280; margin: 0 0 6px 0;">Por: ${alert.user?.username || 'Anónimo'}</p>
             <p style="font-size: 12px; color: #9ca3af; margin: 0 0 12px 0;">${alert.description.substring(0, 100)}...</p>
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
               <span style="padding: 4px 8px; border-radius: 9999px; font-size: 11px; ${this.getStatusBadgeStyle(alert.status)}">
                 ${alert.status || 'active'}
               </span>
               <span style="padding: 4px 8px; border-radius: 9999px; font-size: 11px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.5);">
                 ${alert.category_detail?.name || 'General'}
+              </span>
+            </div>
+            <div style="display: flex; gap: 12px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #10b981;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.85-1.26l3.03-7.08c.09-.23.12-.47.12-.66v-2z"/></svg>
+                ${alert.likes_count || 0}
+              </span>
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #ef4444;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.85 1.26l-3.03 7.08c-.09.23-.12.47-.12.66v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+                ${alert.dislikes_count || 0}
               </span>
             </div>
           </div>
@@ -324,6 +334,55 @@ export class AlertListComponent implements OnInit, AfterViewInit {
 
   isOwner(alert: Alert): boolean {
     return this.currentUser && alert.user && alert.user.id === this.currentUser.id;
+  }
+
+  handleReaction(alert: Alert, reactionType: 'like' | 'dislike'): void {
+    if (!alert.id) {
+      console.error('Alert ID is undefined');
+      return;
+    }
+
+    if (!this.currentUser) {
+      // Redirect to login if not authenticated
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    // Determine the action to take
+    let action: 'like' | 'dislike' | 'remove';
+    if (alert.user_reaction === reactionType) {
+      // User is clicking the same reaction, so remove it
+      action = 'remove';
+    } else {
+      // User is setting a new reaction
+      action = reactionType;
+    }
+
+    this.alertService.reactToAlert(alert.id, action).subscribe({
+      next: (updatedAlert) => {
+        // Update the alert in both lists
+        const updateAlertInList = (list: Alert[]) => {
+          const index = list.findIndex(a => a.id === alert.id);
+          if (index !== -1) {
+            list[index] = { ...list[index], ...updatedAlert };
+          }
+        };
+
+        updateAlertInList(this.myAlerts);
+        updateAlertInList(this.allAlerts);
+
+        // Update selected alert if it's the same
+        if (this.selectedAlert?.id === alert.id) {
+          this.selectedAlert = { ...this.selectedAlert, ...updatedAlert };
+        }
+      },
+      error: (error) => {
+        console.error('Error reacting to alert', error);
+        if (error.status === 401) {
+          this.router.navigate(['/login']);
+        }
+      }
+    });
   }
 
   getStatusBadgeClass(status: string | undefined): string {

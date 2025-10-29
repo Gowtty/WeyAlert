@@ -10,7 +10,7 @@ import { API_BASE_URL } from '../../config';
 interface UserProfile {
   user: User;
   phone: string;
-  avatar: string | null;
+  avatar_url: string | null;
   alerts_reported: number;
   alerts_resolved: number;
   reputation_points: number;
@@ -55,9 +55,7 @@ export class UserProfileComponent implements OnInit {
   ) {
     this.profileForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      phone: [''],
-      first_name: [''],
-      last_name: ['']
+      phone: ['']
     });
 
     this.passwordForm = this.fb.group({
@@ -94,13 +92,14 @@ loadUserProfile(): void {
         this.userProfile = profile;
         this.profileForm.patchValue({
           email: profile.user.email,
-          phone: profile.phone || '',
-          first_name: profile.user.first_name || '',
-          last_name: profile.user.last_name || ''
+          phone: profile.phone || ''
         });
+        // Disable the form initially
+        this.profileForm.disable();
         
-        if (profile.avatar) {
-          this.imagePreviewUrl = `${this.apiUrl}${profile.avatar}`;
+        if (profile.avatar_url) {
+          // avatar_url should already be a full URL from the backend
+          this.imagePreviewUrl = profile.avatar_url;
         }
         
         this.isLoading = false;
@@ -161,9 +160,51 @@ loadUserProfile(): void {
   }
 
   triggerFileInput(): void {
+    // Only allow avatar change when in edit mode
+    if (!this.isEditing) {
+      return;
+    }
     const fileInput = document.getElementById('avatar-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.click();
+    }
+  }
+
+  // Method to toggle edit mode
+  toggleEditMode(): void {
+    this.isEditing = !this.isEditing;
+    if (this.isEditing) {
+      this.profileForm.enable();
+    } else {
+      this.profileForm.disable();
+      // Reset form to original values
+      if (this.userProfile) {
+        this.profileForm.patchValue({
+          email: this.userProfile.user.email,
+          phone: this.userProfile.phone || ''
+        });
+      }
+    }
+  }
+
+  // Method to cancel edit
+  cancelEdit(): void {
+    this.isEditing = false;
+    this.profileForm.disable();
+    this.message = null;
+    // Reset form to original values
+    if (this.userProfile) {
+      this.profileForm.patchValue({
+        email: this.userProfile.user.email,
+        phone: this.userProfile.phone || ''
+      });
+      // Reset avatar preview
+      if (this.userProfile.avatar_url) {
+        this.imagePreviewUrl = this.userProfile.avatar_url;
+      } else {
+        this.imagePreviewUrl = null;
+      }
+      this.selectedImage = null;
     }
   }
 
@@ -182,25 +223,28 @@ loadUserProfile(): void {
     if (this.selectedImage) {
       const formData = new FormData();
       formData.append('email', profileData.email);
-      formData.append('phone', profileData.phone);
-      formData.append('first_name', profileData.first_name);
-      formData.append('last_name', profileData.last_name);
+      formData.append('phone', profileData.phone || '');
       formData.append('avatar', this.selectedImage);
 
-      this.http.patch(`${this.apiUrl}/user/profile/`, formData).subscribe({
+      const headers = new HttpHeaders({
+        'Authorization': `Token ${this.authService.getToken()}`
+      });
+
+      this.http.patch(`${this.apiUrl}/user/profile/`, formData, { headers }).subscribe({
         next: (response: any) => {
           this.handleProfileUpdateSuccess(response);
-          this.reloadUserStatistics();
+          this.selectedImage = null;
         },
         error: (error) => {
           this.handleError(error, 'Error al actualizar el perfil');
         }
       });
     } else {
-      this.http.patch(`${this.apiUrl}/user/profile/`, profileData).subscribe({
+      const headers = this.getAuthHeaders();
+      
+      this.http.patch(`${this.apiUrl}/user/profile/`, profileData, { headers }).subscribe({
         next: (response: any) => {
           this.handleProfileUpdateSuccess(response);
-          this.reloadUserStatistics();
         },
         error: (error) => {
           this.handleError(error, 'Error al actualizar el perfil');
@@ -214,6 +258,7 @@ loadUserProfile(): void {
     this.isSuccess = true;
     this.message = 'Perfil actualizado correctamente';
     this.isEditing = false;
+    this.profileForm.disable();
     
     // Update local user data
     if (response.user) {
@@ -223,7 +268,11 @@ loadUserProfile(): void {
     
     // Reload profile to get updated data
     this.loadUserProfile();
-    this.reloadUserStatistics();
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      this.message = null;
+    }, 3000);
   }
 
   changePassword(): void {
@@ -302,11 +351,4 @@ loadUserProfile(): void {
     }
   }
 
-  // Método para recargar estadísticas
-  private reloadUserStatistics(): void {
-    if (this.userProfile) {
-      // Forzar recarga del perfil para obtener estadísticas actualizadas
-      this.loadUserProfile();
-    }
-  }
 }

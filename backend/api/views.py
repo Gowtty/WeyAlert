@@ -6,7 +6,8 @@ from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from .models import Alert, UserProfile
+from django.db import transaction
+from .models import Alert, UserProfile, AlertReaction
 from .serializers import (
     AlertSerializer, AlertCreateSerializer,
     UserSerializer, UserRegistrationSerializer, UserProfileSerializer
@@ -29,6 +30,12 @@ class AlertViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return AlertCreateSerializer
         return AlertSerializer
+    
+    def get_serializer_context(self):
+        """Pass request context to serializer for user_reaction field"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def perform_create(self, serializer):
         alert = serializer.save(user=self.request.user)
@@ -68,7 +75,55 @@ class AlertViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         alerts = Alert.objects.filter(user=request.user)
-        serializer = AlertSerializer(alerts, many=True)
+        serializer = AlertSerializer(alerts, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def react(self, request, pk=None):
+        """Handle like/dislike reactions to alerts"""
+        alert = self.get_object()
+        reaction_type = request.data.get('reaction_type')
+        
+        if reaction_type not in ['like', 'dislike', 'remove']:
+            return Response(
+                {"error": "reaction_type debe ser 'like', 'dislike' o 'remove'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        with transaction.atomic():
+            try:
+                # Get existing reaction
+                existing_reaction = AlertReaction.objects.get(
+                    user=request.user,
+                    alert=alert
+                )
+                
+                if reaction_type == 'remove':
+                    # Remove the reaction
+                    existing_reaction.delete()
+                else:
+                    # Update existing reaction
+                    existing_reaction.reaction_type = reaction_type
+                    existing_reaction.save()
+                    
+            except AlertReaction.DoesNotExist:
+                if reaction_type != 'remove':
+                    # Create new reaction
+                    AlertReaction.objects.create(
+                        user=request.user,
+                        alert=alert,
+                        reaction_type=reaction_type
+                    )
+            
+            # Update alert counts
+            alert.update_reaction_counts()
+            
+            # Update user reputation
+            if alert.user.profile:
+                alert.user.profile.update_statistics()
+        
+        # Return updated alert data
+        serializer = AlertSerializer(alert, context={'request': request})
         return Response(serializer.data)
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -191,11 +246,18 @@ def user_profile(request):
         profile = UserProfile.objects.create(user=request.user)
     
     if request.method == 'GET':
-        serializer = UserProfileSerializer(profile)
+        serializer = UserProfileSerializer(profile, context={'request': request})
         return Response(serializer.data)
     
     elif request.method == 'PATCH':
-        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        # Handle both JSON and multipart/form-data
+        data = request.data.copy()
+        
+        # Handle avatar file upload
+        if 'avatar' in request.FILES:
+            data['avatar'] = request.FILES['avatar']
+        
+        serializer = UserProfileSerializer(profile, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             
@@ -212,7 +274,9 @@ def user_profile(request):
                 User.objects.filter(pk=request.user.pk).update(**user_data)
                 request.user.refresh_from_db()
             
-            return Response(serializer.data)
+            # Return with context to get full URLs
+            updated_serializer = UserProfileSerializer(profile, context={'request': request})
+            return Response(updated_serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])

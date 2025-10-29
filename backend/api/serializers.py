@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Alert, UserProfile
+from .models import Alert, UserProfile, AlertReaction
 from .categories import get_category
 
 class UserSerializer(serializers.ModelSerializer):
@@ -29,21 +29,32 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    avatar_url = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = UserProfile
-        fields = ['user', 'phone', 'avatar', 'alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
+        fields = ['user', 'phone', 'avatar', 'avatar_url', 'alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
         read_only_fields = ['alerts_reported', 'alerts_resolved', 'reputation_points', 'created_at']
+    
+    def get_avatar_url(self, obj):
+        if obj.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None
 
 class AlertSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     category_detail = serializers.SerializerMethodField()
     image = serializers.ImageField(required=False, allow_null=True)
+    user_reaction = serializers.SerializerMethodField()
     
     class Meta:
         model = Alert
         fields = '__all__'
-        read_only_fields = ['user', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at', 'likes_count', 'dislikes_count']
     
     def get_category_detail(self, obj):
         """Returns the full category data from the dictionary"""
@@ -53,6 +64,17 @@ class AlertSerializer(serializers.ModelSerializer):
                 'key': obj.category,
                 **category_data
             }
+        return None
+    
+    def get_user_reaction(self, obj):
+        """Returns the current user's reaction to this alert"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                reaction = obj.reactions.get(user=request.user)
+                return reaction.reaction_type
+            except:
+                return None
         return None
 
 class AlertCreateSerializer(serializers.ModelSerializer):

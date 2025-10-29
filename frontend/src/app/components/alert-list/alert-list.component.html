@@ -89,7 +89,7 @@
                                     <button 
                                         (click)="viewAlertDetail(alert)"
                                         class="text-primary hover:text-primary/80 transition-colors"
-                                        title="Ver en mapa">
+                                        title="Ver detalles">
                                         <span class="material-symbols-outlined !text-lg">visibility</span>
                                     </button>
                                     <button 
@@ -212,11 +212,31 @@
                                         {{ selectedAlert.status || 'active' }}
                                     </span>
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <p class="text-white/70">Ubicación:</p>
                                     <p class="text-white font-mono text-xs mt-1">
                                         {{ selectedAlert.latitude | number:'1.6-6' }}, {{ selectedAlert.longitude | number:'1.6-6' }}
                                     </p>
+                                    <div class="absolute -bottom-1 -right-2 m-8 flex items-center gap-2">
+                                        <button 
+                                            (click)="handleReaction(selectedAlert, 'like')"
+                                            [class]="selectedAlert.user_reaction === 'like' ? 
+                                                     'bg-green-500/20 border-green-500 text-green-400' : 
+                                                     'bg-background-dark/50 border-white/20 text-white/50 hover:border-green-500 hover:text-green-400'"
+                                            class="flex items-center gap-1 px-2 py-1 border rounded-md transition-all text-xs">
+                                            <span class="material-symbols-outlined !text-sm">thumb_up</span>
+                                            <span>{{ selectedAlert.likes_count || 0 }}</span>
+                                        </button>
+                                        <button 
+                                            (click)="handleReaction(selectedAlert, 'dislike')"
+                                            [class]="selectedAlert.user_reaction === 'dislike' ? 
+                                                     'bg-red-500/20 border-red-500 text-red-400' : 
+                                                     'bg-background-dark/50 border-white/20 text-white/50 hover:border-red-500 hover:text-red-400'"
+                                            class="flex items-center gap-1 px-2 py-1 border rounded-md transition-all text-xs">
+                                            <span class="material-symbols-outlined !text-sm">thumb_down</span>
+                                            <span>{{ selectedAlert.dislikes_count || 0 }}</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <p class="text-white/70">Fecha:</p>

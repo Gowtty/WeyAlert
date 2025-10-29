@@ -30,14 +30,14 @@
       </div>
       
       <div *ngIf="authError" class="p-3 text-sm rounded-lg" 
-           [class.bg-red-100]="authError !== 'Registration successful! You can now log in.'"
-           [class.text-red-800]="authError !== 'Registration successful! You can now log in.'"
-           [class.dark:bg-red-900]="authError !== 'Registration successful! You can now log in.'"
-           [class.dark:text-red-300]="authError !== 'Registration successful! You can now log in.'"
-           [class.bg-green-100]="authError === 'Registration successful! You can now log in.'"
-           [class.text-green-800]="authError === 'Registration successful! You can now log in.'"
-           [class.dark:bg-green-900]="authError === 'Registration successful! You can now log in.'"
-           [class.dark:text-green-300]="authError === 'Registration successful! You can now log in.'">
+           [class.bg-red-100]="!isSuccessMessage"
+           [class.text-red-800]="!isSuccessMessage"
+           [class.dark:bg-red-900]="!isSuccessMessage"
+           [class.dark:text-red-300]="!isSuccessMessage"
+           [class.bg-green-100]="isSuccessMessage"
+           [class.text-green-800]="isSuccessMessage"
+           [class.dark:bg-green-900]="isSuccessMessage"
+           [class.dark:text-green-300]="isSuccessMessage">
         {{ authError }}
       </div>
   

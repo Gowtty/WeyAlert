@@ -16,6 +16,7 @@ export class LoginComponent implements OnInit {
   registerForm: FormGroup;
   isSubmitting = false;
   authError: string | null = null;
+  isSuccessMessage = false;
   isLoginMode = true;
 
   constructor(
@@ -58,6 +59,7 @@ export class LoginComponent implements OnInit {
   showLogin(): void {
     this.isLoginMode = true;
     this.authError = null;
+    this.isSuccessMessage = false;
     this.loginForm.reset();
     this.updateQueryParams();
   }
@@ -65,6 +67,7 @@ export class LoginComponent implements OnInit {
   showRegister(): void {
     this.isLoginMode = false;
     this.authError = null;
+    this.isSuccessMessage = false;
     this.registerForm.reset();
     this.updateQueryParams();
   }
@@ -92,6 +95,7 @@ export class LoginComponent implements OnInit {
         error: (error: any) => {
           this.isSubmitting = false;
           this.authError = error.error?.message || 'Error durante el inicio de sesión';
+          this.isSuccessMessage = false;
         }
       });
     } else {
@@ -128,12 +132,18 @@ export class LoginComponent implements OnInit {
       next: (response) => {
         console.log('Registro exitoso:', response);
         this.isSubmitting = false;
-        this.authError = 'Registration successful! You can now log in.';
+        this.authError = '¡Registro exitoso! Ya puedes iniciar sesión.';
+        this.isSuccessMessage = true;
+        // Switch to login mode after successful registration
+        setTimeout(() => {
+          this.isLoginMode = true;
+        }, 2000);
       },
       error: (error: any) => {
         console.error('Error en registro:', error);
         this.isSubmitting = false;
         this.authError = error.error?.detail || 'Error durante el registro';
+        this.isSuccessMessage = false;
       }
     });
   } else {

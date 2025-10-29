@@ -19,6 +19,8 @@ class Alert(models.Model):
     longitude = models.FloatField()
     image = models.ImageField(upload_to='alerts/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    likes_count = models.IntegerField(default=0)
+    dislikes_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -26,8 +28,32 @@ class Alert(models.Model):
         """Returns the full category data from the dictionary"""
         return get_category(self.category)
     
+    def update_reaction_counts(self):
+        """Update the cached like/dislike counts"""
+        self.likes_count = self.reactions.filter(reaction_type='like').count()
+        self.dislikes_count = self.reactions.filter(reaction_type='dislike').count()
+        self.save(update_fields=['likes_count', 'dislikes_count'])
+    
     def __str__(self):
         return self.title
+
+class AlertReaction(models.Model):
+    """Model to track user reactions (likes/dislikes) on alerts"""
+    REACTION_CHOICES = [
+        ('like', 'Like'),
+        ('dislike', 'Dislike'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alert_reactions')
+    alert = models.ForeignKey(Alert, on_delete=models.CASCADE, related_name='reactions')
+    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'alert')  # One reaction per user per alert
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.reaction_type} - {self.alert.title}"
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -52,10 +78,16 @@ class UserProfile(models.Model):
             status='resolved'
         ).count()
         
-        # Calcular puntos de reputación
+        # Calcular puntos de reputación basado en likes/dislikes
+        user_alerts = Alert.objects.filter(user=self.user)
+        total_likes = sum(alert.likes_count for alert in user_alerts)
+        total_dislikes = sum(alert.dislikes_count for alert in user_alerts)
+        
         self.reputation_points = (
             self.alerts_reported * 10 + 
-            self.alerts_resolved * 20
+            self.alerts_resolved * 20 +
+            total_likes * 5 -  # +5 points per like
+            total_dislikes * 3  # -3 points per dislike
         )
         
         self.save()
