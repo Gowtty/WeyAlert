@@ -64,7 +64,13 @@
                                     <div class="text-sm text-white/50 truncate max-w-xs">{{ alert.description }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-white/70">{{ alert.user?.username || 'Anónimo' }}</div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-sm text-white/70">{{ alert.user?.username || 'Anónimo' }}</span>
+                                        <span [class]="'material-symbols-outlined !text-sm reputation-badge ' + getReputationColor(alert.user?.reputation_points)"
+                                              [title]="getReputationTooltip(alert.user?.reputation_points)">
+                                            {{ getReputationIcon(alert.user?.reputation_points) }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getCategoryBadgeClass(alert.category_detail)">
@@ -79,7 +85,7 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getStatusBadgeClass(alert.status)">
-                                        {{ alert.status || 'activa' }}
+                                        {{ alert.status_display || 'Activa' }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-white/70">
@@ -91,6 +97,13 @@
                                         class="text-primary hover:text-primary/80 transition-colors"
                                         title="Ver detalles">
                                         <span class="material-symbols-outlined !text-lg">visibility</span>
+                                    </button>
+                                    <button 
+                                        *ngIf="isOwner(alert) && alert.status !== 'resolved'"
+                                        (click)="closeAlert(alert)"
+                                        class="text-green-400 hover:text-green-300 transition-colors"
+                                        title="Marcar como resuelta">
+                                        <span class="material-symbols-outlined !text-lg">check_circle</span>
                                     </button>
                                     <button 
                                         *ngIf="isOwner(alert)"
@@ -143,7 +156,7 @@
                             <div class="flex justify-between items-start mb-2">
                                 <h4 class="font-medium text-white text-sm">{{ alert.title }}</h4>
                                 <span [class]="'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ' + getStatusBadgeClass(alert.status)">
-                                    {{ alert.status || 'activa' }}
+                                    {{ alert.status_display || 'Activa' }}
                                 </span>
                             </div>
                             <p class="text-white/70 text-xs mb-2 line-clamp-2">{{ alert.description }}</p>
@@ -195,7 +208,13 @@
                             <div class="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <p class="text-white/70">Usuario:</p>
-                                    <p class="text-white mt-1">{{ selectedAlert.user?.username || 'Anónimo' }}</p>
+                                    <div class="flex items-center gap-1 mt-1">
+                                        <span class="text-white">{{ selectedAlert.user?.username || 'Anónimo' }}</span>
+                                        <span [class]="'material-symbols-outlined !text-sm reputation-badge ' + getReputationColor(selectedAlert.user?.reputation_points)"
+                                              [title]="getReputationTooltip(selectedAlert.user?.reputation_points)">
+                                            {{ getReputationIcon(selectedAlert.user?.reputation_points) }}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div>
                                     <p class="text-white/70">Categoría:</p>
@@ -209,7 +228,7 @@
                                 <div>
                                     <p class="text-white/70">Estado:</p>
                                     <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ' + getStatusBadgeClass(selectedAlert.status)">
-                                        {{ selectedAlert.status || 'active' }}
+                                        {{ selectedAlert.status_display || 'Activa' }}
                                     </span>
                                 </div>
                                 <div class="relative">
@@ -245,20 +264,87 @@
                             </div>
                             <p class="text-white/80 mt-4 text-sm">{{ selectedAlert.description }}</p>
                             
-                            <!-- Action Buttons for Owner -->
-                            <div *ngIf="isOwner(selectedAlert)" class="flex gap-2 mt-4">
+                            <!-- Action Buttons -->
+                            <div class="flex gap-2 mt-4">
                                 <button 
+                                    (click)="toggleComments(selectedAlert)"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-1">
+                                    <span class="material-symbols-outlined !text-lg">comment</span>
+                                    Comentarios ({{selectedAlert.comments_count || 0}})
+                                </button>
+                                <button 
+                                    *ngIf="isOwner(selectedAlert) && selectedAlert.status !== 'resolved'"
+                                    (click)="closeAlert(selectedAlert)"
+                                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-1">
+                                    <span class="material-symbols-outlined !text-lg">check_circle</span>
+                                    Marcar Resuelta
+                                </button>
+                                <button 
+                                    *ngIf="isOwner(selectedAlert)"
                                     (click)="editAlert(selectedAlert)"
                                     class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm flex items-center gap-1">
                                     <span class="material-symbols-outlined !text-lg">edit</span>
                                     Editar
                                 </button>
                                 <button 
+                                    *ngIf="isOwner(selectedAlert)"
                                     (click)="deleteAlert(selectedAlert)"
                                     class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-1">
                                     <span class="material-symbols-outlined !text-lg">delete</span>
                                     Eliminar
                                 </button>
+                            </div>
+                            
+                            <!-- Comments Section -->
+                            <div *ngIf="showComments" class="mt-6 pt-4 border-t border-white/10">
+                                <h4 class="text-white font-semibold mb-4">Comentarios</h4>
+                                
+                                <!-- Add Comment Form -->
+                                <div *ngIf="currentUser" class="mb-4">
+                                    <div class="flex gap-2">
+                                        <input 
+                                            [(ngModel)]="newCommentText"
+                                            type="text"
+                                            placeholder="Añadir un comentario..."
+                                            class="flex-1 px-3 py-2 bg-background-dark/50 text-white rounded-lg border border-white/20 focus:border-primary focus:outline-none"
+                                            (keyup.enter)="addComment(selectedAlert)">
+                                        <button 
+                                            (click)="addComment(selectedAlert)"
+                                            [disabled]="!newCommentText.trim()"
+                                            class="px-4 py-2 bg-primary text-background-dark rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <span class="material-symbols-outlined !text-lg">send</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Comments List -->
+                                <div class="space-y-3 max-h-60 overflow-y-auto">
+                                    <div *ngIf="loadingComments" class="text-center py-4">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                    </div>
+                                    
+                                    <div *ngFor="let comment of comments" class="bg-background-dark/30 rounded-lg p-3">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-primary text-sm font-medium">
+                                                    {{ comment.user?.username || 'Anónimo' }}
+                                                </span>
+                                                <span [class]="'material-symbols-outlined !text-xs reputation-badge ' + getReputationColor(comment.user?.reputation_points)"
+                                                      [title]="getReputationTooltip(comment.user?.reputation_points)">
+                                                    {{ getReputationIcon(comment.user?.reputation_points) }}
+                                                </span>
+                                            </div>
+                                            <span class="text-white/50 text-xs">
+                                                {{ comment.created_at | date:'short' }}
+                                            </span>
+                                        </div>
+                                        <p class="text-white/80 text-sm">{{ comment.text }}</p>
+                                    </div>
+                                    
+                                    <div *ngIf="!loadingComments && comments.length === 0" class="text-center py-4 text-white/50">
+                                        No hay comentarios aún
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

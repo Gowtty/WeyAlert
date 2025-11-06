@@ -7,11 +7,12 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import transaction
-from .models import Alert, UserProfile, AlertReaction
+from .models import Alert, UserProfile, AlertReaction, AlertComment
 from .serializers import (
-    AlertSerializer, AlertCreateSerializer,
+    AlertSerializer, AlertCreateSerializer, AlertCommentSerializer,
     UserSerializer, UserRegistrationSerializer, UserProfileSerializer
 )
+from django.utils import timezone
 from .categories import get_all_categories
 
 @api_view(['GET'])
@@ -42,6 +43,12 @@ class AlertViewSet(viewsets.ModelViewSet):
         # Actualizar estadísticas del usuario
         if hasattr(self.request.user, 'profile'):
             self.request.user.profile.update_statistics()
+    
+    def perform_update(self, serializer):
+        # Check if user is the owner
+        if serializer.instance.user != self.request.user:
+            raise permissions.PermissionDenied("Solo el creador puede editar esta alerta")
+        serializer.save()
     
     def perform_destroy(self, instance):
         # Actualizar estadísticas antes de eliminar
@@ -125,6 +132,71 @@ class AlertViewSet(viewsets.ModelViewSet):
         # Return updated alert data
         serializer = AlertSerializer(alert, context={'request': request})
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def close(self, request, pk=None):
+        """Mark an alert as resolved (only the owner can close it)"""
+        alert = self.get_object()
+        
+        # Check if the user is the owner of the alert
+        if alert.user != request.user:
+            return Response(
+                {"error": "Solo el creador de la alerta puede cerrarla"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if alert is already closed
+        if alert.status == 'resolved':
+            return Response(
+                {"error": "Esta alerta ya está cerrada"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update alert status
+        alert.status = 'resolved'
+        alert.closed_at = timezone.now()
+        alert.save()
+        
+        # Update user statistics
+        if hasattr(request.user, 'profile'):
+            request.user.profile.update_statistics()
+        
+        serializer = AlertSerializer(alert, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get', 'post'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    def comments(self, request, pk=None):
+        """Get comments for an alert or add a new comment"""
+        alert = self.get_object()
+        
+        if request.method == 'GET':
+            comments = alert.comments.all()
+            serializer = AlertCommentSerializer(comments, many=True)
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            # Check if user is authenticated
+            if not request.user.is_authenticated:
+                return Response(
+                    {"error": "Autenticación requerida para comentar"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            text = request.data.get('text')
+            if not text:
+                return Response(
+                    {"error": "El texto del comentario es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            comment = AlertComment.objects.create(
+                user=request.user,
+                alert=alert,
+                text=text
+            )
+            
+            serializer = AlertCommentSerializer(comment)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()

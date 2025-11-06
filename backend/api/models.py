@@ -23,6 +23,7 @@ class Alert(models.Model):
     dislikes_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    closed_at = models.DateTimeField(blank=True, null=True)
     
     def get_category_detail(self):
         """Returns the full category data from the dictionary"""
@@ -54,6 +55,20 @@ class AlertReaction(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.reaction_type} - {self.alert.title}"
+
+class AlertComment(models.Model):
+    """Model to track user comments on alerts"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alert_comments')
+    alert = models.ForeignKey(Alert, on_delete=models.CASCADE, related_name='comments')
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} on {self.alert.title}: {self.text[:50]}..."
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')

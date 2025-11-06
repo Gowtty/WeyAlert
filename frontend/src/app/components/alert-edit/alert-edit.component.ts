@@ -49,7 +49,28 @@ export class AlertEditComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Check authentication first - check the correct key
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    const user = localStorage.getItem('current_user') || localStorage.getItem('user');
+    
+    console.log('Auth check - Token exists:', !!token);
+    console.log('Auth check - User exists:', !!user);
+    
+    if (!token || !user) {
+      console.log('No auth found, redirecting to login');
+      console.log('Token key "auth_token":', localStorage.getItem('auth_token'));
+      console.log('Token key "token":', localStorage.getItem('token'));
+      this.router.navigate(['/login']);
+      return;
+    }
+    
     this.alertId = Number(this.route.snapshot.paramMap.get('id'));
+    if (!this.alertId || isNaN(this.alertId)) {
+      console.error('Invalid alert ID');
+      this.router.navigate(['/alerts']);
+      return;
+    }
+    
     this.fetchCategories();
     this.loadAlert();
   }
@@ -59,20 +80,42 @@ export class AlertEditComponent implements OnInit {
       this.alertService.getAlert(this.alertId).subscribe({
         next: (alert) => {
           this.currentAlert = alert;
+          
+          // Check ownership - try both possible localStorage keys
+          const userStr = localStorage.getItem('current_user') || localStorage.getItem('user');
+          const currentUser = userStr ? JSON.parse(userStr) : null;
+          
+          console.log('Current user:', currentUser);
+          console.log('Alert user:', alert.user);
+          
+          if (!currentUser || !alert.user || alert.user.id !== currentUser.id) {
+            this.apiMessage = 'No tienes permisos para editar esta alerta';
+            this.isSuccess = false;
+            setTimeout(() => this.router.navigate(['/alerts']), 2000);
+            return;
+          }
+          
           this.alertForm.patchValue({
             category: alert.category,
             title: alert.title,
             description: alert.description,
-            status: alert.status
+            status: alert.status || 'active'
           });
           
           if (alert.image) {
-            this.imagePreviewUrl = `${this.apiUrl}${alert.image}`;
+            // Handle both relative and absolute URLs
+            if (alert.image.startsWith('http')) {
+              this.imagePreviewUrl = alert.image;
+            } else {
+              this.imagePreviewUrl = `${this.apiUrl}${alert.image}`;
+            }
           }
         },
         error: (error) => {
+          console.error('Error loading alert:', error);
           this.apiMessage = 'Error al cargar la alerta';
           this.isSuccess = false;
+          setTimeout(() => this.router.navigate(['/alerts']), 2000);
         }
       });
     }
@@ -131,7 +174,7 @@ export class AlertEditComponent implements OnInit {
   }
 
 onSubmit(): void {
-  if (this.alertForm.invalid || !this.alertId) {
+  if (this.alertForm.invalid || !this.alertId || !this.currentAlert) {
     this.apiMessage = 'Por favor, completa todos los campos requeridos.';
     this.isSuccess = false;
     return;
@@ -144,7 +187,9 @@ onSubmit(): void {
     category: this.alertForm.get('category')?.value,
     title: this.alertForm.get('title')?.value,
     description: this.alertForm.get('description')?.value,
-    status: this.alertForm.get('status')?.value
+    status: this.alertForm.get('status')?.value,
+    latitude: this.currentAlert.latitude,
+    longitude: this.currentAlert.longitude
   };
 
   if (this.selectedImage) {
@@ -153,6 +198,8 @@ onSubmit(): void {
     formData.append('title', alertData.title);
     formData.append('description', alertData.description);
     formData.append('status', alertData.status);
+    formData.append('latitude', alertData.latitude.toString());
+    formData.append('longitude', alertData.longitude.toString());
     formData.append('image', this.selectedImage);
 
     this.alertService.updateAlert(this.alertId, formData).subscribe({

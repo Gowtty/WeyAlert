@@ -1,7 +1,8 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
-import { AlertService, Alert } from '../../services/alert.service';
+import { FormsModule } from '@angular/forms';
+import { AlertService, Alert, AlertComment } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
 import { API_BASE_URL } from '../../config';
 
@@ -11,7 +12,7 @@ import * as L from 'leaflet';
 @Component({
   selector: 'app-alert-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, DatePipe],
+  imports: [CommonModule, RouterModule, DatePipe, FormsModule],
   templateUrl: './alert-list.component.html',
   styleUrl: './alert-list.component.css'
 })
@@ -24,6 +25,12 @@ export class AlertListComponent implements OnInit, AfterViewInit {
   activeView: 'list' | 'map' = 'list';
   selectedAlert: Alert | null = null;
   currentUser: any;
+  
+  // Comments state
+  comments: AlertComment[] = [];
+  newCommentText: string = '';
+  showComments: boolean = false;
+  loadingComments: boolean = false;
   
   private map: L.Map | null = null;
   private markers: L.Marker[] = [];
@@ -269,6 +276,11 @@ export class AlertListComponent implements OnInit, AfterViewInit {
     this.selectedAlert = alert;
     this.activeView = 'map';
     
+    // Reset comments when switching alerts
+    this.comments = [];
+    this.showComments = false;
+    this.newCommentText = '';
+    
     // Si el mapa no está inicializado, inicializarlo
     if (!this.mapInitialized) {
       setTimeout(() => {
@@ -300,7 +312,11 @@ export class AlertListComponent implements OnInit, AfterViewInit {
 
   editAlert(alert: Alert): void {
     if (alert.id) {
-      this.router.navigate(['/alert-edit', alert.id]);
+      console.log('Navigating to edit alert with ID:', alert.id);
+      this.router.navigate(['/alert-edit', alert.id]).then(
+        success => console.log('Navigation success:', success),
+        error => console.error('Navigation error:', error)
+      );
     } else {
       console.error('Alert ID is undefined');
       window.alert('Error: No se puede editar esta alerta');
@@ -444,5 +460,127 @@ export class AlertListComponent implements OnInit, AfterViewInit {
     }
     // Otherwise, prepend the API base URL with /media/
     return `${API_BASE_URL}/media/${imagePath}`;
+  }
+
+  getReputationLevel(points: number | undefined): 'low' | 'medium' | 'high' {
+    if (!points || points < 50) return 'low';
+    if (points < 200) return 'medium';
+    return 'high';
+  }
+
+  getReputationIcon(points: number | undefined): string {
+    const level = this.getReputationLevel(points);
+    switch(level) {
+      case 'low': return 'verified';
+      case 'medium': return 'military_tech';
+      case 'high': return 'workspace_premium';
+    }
+  }
+
+  getReputationColor(points: number | undefined): string {
+    const level = this.getReputationLevel(points);
+    switch(level) {
+      case 'low': return 'text-gray-400';
+      case 'medium': return 'text-yellow-400';
+      case 'high': return 'text-purple-400';
+    }
+  }
+
+  getReputationTooltip(points: number | undefined): string {
+    const level = this.getReputationLevel(points);
+    switch(level) {
+      case 'low': 
+        return 'Usuario Nuevo';
+      case 'medium': 
+        return 'Usuario Confiable';
+      case 'high': 
+        return 'Usuario Mega Confiable';
+    }
+  }
+
+  closeAlert(alert: Alert): void {
+    if (!alert.id) {
+      console.error('Alert ID is undefined');
+      return;
+    }
+
+    if (confirm('¿Estás seguro de que quieres marcar esta alerta como resuelta?')) {
+      this.alertService.closeAlert(alert.id).subscribe({
+        next: (updatedAlert) => {
+          // Update the alert in both lists
+          const updateAlert = (list: Alert[]) => {
+            const index = list.findIndex(a => a.id === alert.id);
+            if (index !== -1) {
+              list[index] = updatedAlert;
+            }
+          };
+          
+          updateAlert(this.myAlerts);
+          updateAlert(this.allAlerts);
+          
+          if (this.selectedAlert?.id === alert.id) {
+            this.selectedAlert = updatedAlert;
+          }
+          
+          // Update markers on the map
+          this.addMarkersToMap();
+        },
+        error: (error) => {
+          console.error('Error closing alert', error);
+          window.alert('Error al cerrar la alerta');
+        }
+      });
+    }
+  }
+
+  toggleComments(alert: Alert): void {
+    if (!alert.id) return;
+    
+    this.showComments = !this.showComments;
+    
+    if (this.showComments) {
+      this.loadComments(alert);
+    }
+  }
+
+  loadComments(alert: Alert): void {
+    if (!alert.id) return;
+    
+    this.loadingComments = true;
+    this.alertService.getAlertComments(alert.id).subscribe({
+      next: (comments) => {
+        this.comments = comments;
+        this.loadingComments = false;
+      },
+      error: (error) => {
+        console.error('Error loading comments', error);
+        this.loadingComments = false;
+      }
+    });
+  }
+
+  addComment(alert: Alert): void {
+    if (!alert.id || !this.newCommentText.trim()) return;
+    
+    if (!this.currentUser) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    
+    this.alertService.addAlertComment(alert.id, this.newCommentText).subscribe({
+      next: (comment) => {
+        this.comments.unshift(comment);
+        this.newCommentText = '';
+        
+        // Update comment count in the alert
+        if (alert.comments_count !== undefined) {
+          alert.comments_count++;
+        }
+      },
+      error: (error) => {
+        console.error('Error adding comment', error);
+        window.alert('Error al añadir el comentario');
+      }
+    });
   }
 }

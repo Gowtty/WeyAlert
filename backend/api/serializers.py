@@ -1,13 +1,15 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Alert, UserProfile, AlertReaction
+from .models import Alert, UserProfile, AlertReaction, AlertComment
 from .categories import get_category
 
 class UserSerializer(serializers.ModelSerializer):
+    reputation_points = serializers.IntegerField(source='profile.reputation_points', read_only=True, default=0)
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
-        read_only_fields = ['id']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'reputation_points']
+        read_only_fields = ['id', 'reputation_points']
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -45,16 +47,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return obj.avatar.url
         return None
 
+class AlertCommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = AlertComment
+        fields = ['id', 'user', 'text', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
 class AlertSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     category_detail = serializers.SerializerMethodField()
     image = serializers.ImageField(required=False, allow_null=True)
     user_reaction = serializers.SerializerMethodField()
+    comments = AlertCommentSerializer(many=True, read_only=True)
+    comments_count = serializers.IntegerField(source='comments.count', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
         model = Alert
         fields = '__all__'
-        read_only_fields = ['user', 'created_at', 'updated_at', 'likes_count', 'dislikes_count']
+        read_only_fields = ['user', 'created_at', 'updated_at', 'likes_count', 'dislikes_count', 'closed_at']
     
     def get_category_detail(self, obj):
         """Returns the full category data from the dictionary"""
