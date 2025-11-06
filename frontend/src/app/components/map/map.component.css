@@ -72,3 +72,18 @@
  .max-h-60::-webkit-scrollbar-thumb:hover {
      background: rgba(255, 255, 255, 0.5);
  }
+
+/* Autocomplete dropdown styles */
+.line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+}
+
+.line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}

@@ -3,7 +3,8 @@ import { CommonModule, NgIf, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import * as L from 'leaflet';
-import { Subscription } from 'rxjs';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { AlertService, Alert } from '../../services/alert.service';
 
@@ -30,6 +31,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   selectedLatitude: number | null = null;
   selectedLongitude: number | null = null;
   
+  // Autocomplete state
+  searchQuery: string = '';
+  searchSuggestions: any[] = [];
+  showSuggestions: boolean = false;
+  private searchSubject = new Subject<string>();
+  selectedSuggestionIndex: number = -1;
+  
   // Alert visualization state
   alertsVisible: boolean = true;
   availableCategories: any[] = [];
@@ -49,7 +57,18 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     private router: Router, 
     private authService: AuthService,
     private alertService: AlertService
-  ) { }
+  ) {
+    // Setup search debounce
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => this.searchLocations(query))
+    ).subscribe(suggestions => {
+      this.searchSuggestions = suggestions;
+      this.showSuggestions = suggestions.length > 0;
+      this.selectedSuggestionIndex = -1;
+    });
+  }
 
   ngAfterViewInit(): void {
     this.initMap();
@@ -74,6 +93,9 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
+    
+    // Cleanup search subject
+    this.searchSubject.complete();
   }
 
   /**
@@ -371,6 +393,10 @@ export class MapComponent implements AfterViewInit, OnDestroy {
             
             // Place marker for alert creation
             this.placeMarker(lat, lng);
+            
+            // Clear suggestions after selection
+            this.showSuggestions = false;
+            this.searchSuggestions = [];
           } else {
             alert(`No se encontraron resultados para "${query}"`);
           }
@@ -380,6 +406,96 @@ export class MapComponent implements AfterViewInit, OnDestroy {
           alert('Error al buscar la ubicación. Intenta de nuevo más tarde.');
         }
       });
+  }
+  
+  /**
+   * Search for location suggestions using Nominatim API
+   */
+  private searchLocations(query: string) {
+    if (!query || query.length < 3) {
+      return new Subject<any[]>().asObservable();
+    }
+    
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`;
+    return this.http.get<any[]>(url);
+  }
+  
+  /**
+   * Handle input changes for autocomplete
+   */
+  onSearchInput(value: string): void {
+    this.searchQuery = value;
+    if (value.length >= 3) {
+      this.searchSubject.next(value);
+    } else {
+      this.searchSuggestions = [];
+      this.showSuggestions = false;
+    }
+  }
+  
+  /**
+   * Handle keyboard navigation in suggestions
+   */
+  onSearchKeydown(event: KeyboardEvent): void {
+    if (!this.showSuggestions || this.searchSuggestions.length === 0) {
+      return;
+    }
+    
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.selectedSuggestionIndex = Math.min(
+          this.selectedSuggestionIndex + 1,
+          this.searchSuggestions.length - 1
+        );
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, 0);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (this.selectedSuggestionIndex >= 0) {
+          this.selectSuggestion(this.searchSuggestions[this.selectedSuggestionIndex]);
+        } else if (this.searchQuery) {
+          this.searchLocation(this.searchQuery);
+        }
+        break;
+      case 'Escape':
+        this.showSuggestions = false;
+        this.selectedSuggestionIndex = -1;
+        break;
+    }
+  }
+  
+  /**
+   * Select a suggestion from the dropdown
+   */
+  selectSuggestion(suggestion: any): void {
+    if (!this.map) return;
+    
+    const lat = parseFloat(suggestion.lat);
+    const lng = parseFloat(suggestion.lon);
+    const newLocation = L.latLng(lat, lng);
+    
+    this.map.setView(newLocation, 15);
+    this.placeMarker(lat, lng);
+    
+    // Update search input with selected location
+    this.searchQuery = suggestion.display_name;
+    this.showSuggestions = false;
+    this.searchSuggestions = [];
+    this.selectedSuggestionIndex = -1;
+  }
+  
+  /**
+   * Hide suggestions when clicking outside
+   */
+  hideSuggestions(): void {
+    setTimeout(() => {
+      this.showSuggestions = false;
+      this.selectedSuggestionIndex = -1;
+    }, 200);
   }
   
   /**
