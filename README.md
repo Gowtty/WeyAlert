@@ -162,33 +162,6 @@ DATABASE_URL=sqlite:///db.sqlite3
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
 ```
 
-## Problemas encontrados durante la creacion del proyecto y sus posibles soluciones
-
-### El backend no inicia
-
-- Verificar que el entorno virtual este activado (deberias ver `(venv)` en tu terminal)
-- Verificar que todas las dependencias esten instaladas: `pip install -r requirements.txt`
-- Revisar que el archivo `.env` exista en la carpeta `backend/`
-- Verificar que las migraciones esten aplicadas: `python manage.py migrate`
-
-### El frontend no inicia
-
-- Eliminar `node_modules/` y ejecuta `npm install` nuevamente
-- Verificar tu versión de Node.js: `node --version` (debe ser 18+)
-- Limpiar el cache de Angular: `ng cache clean`
-- Verificar que Angular CLI este instalado: `npm install -g @angular/cli`
-
-### Error de CORS
-
-- Verificar que `CORS_ALLOWED_ORIGINS` en `backend/.env` incluya `http://localhost:4200`
-- Verificar que `django-cors-headers` esté instalado y configurado correctamente
-- Reiniciar el servidor Django después de cambiar variables de entorno
-
-### Errores de base de datos
-
-- Eliminar `db.sqlite3` y ejecuta `python manage.py migrate` nuevamente
-- Verificar que el directorio tenga permisos de escritura
-
 ## Uso de la Aplicacion
 
 1. **Registro/Login**: Crea una cuenta o inicia sesión
@@ -212,3 +185,4 @@ CORS_ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
 ## Licencia
 
 Este proyecto fue desarrollado con fines académicos.
+
